@@ -21,12 +21,15 @@ from keras.layers import BatchNormalization, Input, concatenate, Conv2D, add, Co
 from keras.callbacks import History, EarlyStopping, ModelCheckpoint, CSVLogger, TensorBoard, LearningRateScheduler, ReduceLROnPlateau
 from keras.preprocessing import image
 
-from epistemic_uncertainty_utils import Utils
+from gtxDLClassAWSUtils import Utils
 
 import boto3 
 import io
 import openpyxl
-
+class MonteCarloDropout(Dropout):
+    def call(self, inputs):
+        return super().call(inputs, training=True)
+        
 
 class DL(Utils):    
     # Initialization method runs whenever an instance of the class is initiated
@@ -430,9 +433,11 @@ class DL(Utils):
     def drop_out(self, x, drop_out):
         if drop_out: 
             print("inside dropout")
-            x = Dropout(drop_out)(x, training = True)
+            x = MonteCarloDropout(0.5)(x, training = True)
     
         return x 
+
+    
 
     def load(self):
 
@@ -460,7 +465,7 @@ class DL(Utils):
             else: # If the modelD attribute does not exist
                 print('\nModel is not currently defined - select again.') 
                 break
-    
+
     def Model(self):
         """The deep learning architecture gets defined here"""
 
@@ -486,18 +491,18 @@ class DL(Utils):
         #outOP1 = inOP
         #inOP = BatchNormalization()(inOP)  
         #inOP = self.drop_out(inOP, drop_out) #drop out 1
-        inOP = Dropout(drop_out)(inOP, training = True) #drop out 1
+        inOP = self.drop_out(inOP, drop_out) #drop out 1
 
         inOP = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inOP)
         #outOP2 = inOP
-        inOP = Dropout(drop_out)(inOP, training = True) #drop out 1
+        inOP = self.drop_out(inOP, drop_out) #drop out 1
 
         #inOP = BatchNormalization()(inOP)
         inOP = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inOP)
         #outOP3 = inOP
-        inOP = Dropout(drop_out)(inOP, training = True) #drop out 1
+        inOP = self.drop_out(inOP, drop_out) #drop out 1
 
         #inOP = BatchNormalization()(inOP)
         inOP = self.resblock_2D(self.params['nFilters2D']//2, self.params['kernelResBlock2D'], self.params['strideConv2D'], inOP, drop_out)
@@ -508,19 +513,19 @@ class DL(Utils):
 
         inFL = Conv2D(filters=self.params['nFilters2D'], kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], input_shape=input_shape, data_format="channels_last")(inFL_beg)
-        inFL = Dropout(drop_out)(inFL, training = True) #drop out 1
+        inFL = self.drop_out(inFL, drop_out) #drop out 1
 
         #inFL = BatchNormalization()(inFL)
         inFL = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inFL)
         #outFL2 = inFL
-        inFL = Dropout(drop_out)(inFL, training = True) #drop out 1
+        inFL = self.drop_out(inFL, drop_out) #drop out 1
 
         #inFL = BatchNormalization()(inFL)
         inFL = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inFL)
         #outFL3 = inFL
-        inFL = Dropout(drop_out)(inFL, training = True) #drop out 1
+        inFL = self.drop_out(inFL, drop_out) #drop out 1
 
         #inFL = BatchNormalization()(inFL)
         inFL = self.resblock_2D(self.params['nFilters2D']//2, self.params['kernelResBlock2D'], self.params['strideConv2D'], inFL, drop_out)
@@ -1307,10 +1312,11 @@ class DL(Utils):
                 #self.no_dropout_model.load_weights(loadFile)
                 #self.modelD = load_model(loadFile, compile=False) 
                 #self.new_model.summary()# Load the weights into this model
-                #self.modelD = load_model(loadFile, compile = False) 
-                self.modelD = self.Model()
-                self.modelD.summary()
+                self.modelD = load_model(loadFile, compile = False) 
                 #self.modelD = self.Model()
+                #self.modelD.summary()
+                #self.modelD = self.Model()
+                self.modelD.load_weights(loadFile)
 
                 self.importData(isTesting=True,quickTest=True)
                 break
@@ -1335,14 +1341,10 @@ class DL(Utils):
             #tmp = self.modelD.predict([self.OP, self.FL])  
             #depth_prediction_ensembles_no_dropout[:,:,:,i] = tmp[1].squeeze()
             #concentration_prediction_ensembles_no_dropout[:,:,:,i] = tmp[0].squeeze()
-            self.modelD = self.Model()
 
-            self.modelD.load_weights(loadFile)
-
-            tmp = self.modelD.predict([self.OP, self.FL])  
+            tmp = self.modelD.predict([self.OP, self.FL], batch_size = 1)  
+            #tmp = self.modelD([self.OP, self.FL], training = True)
             depth_prediction_ensembles[:,:,:,i] = tmp[1].squeeze()
-            
-            print(tmp[1].squeeze())
             concentration_prediction_ensembles[:,:,:,i] = tmp[0].squeeze()
 
         depth_prediction_mean = np.zeros((num_examples, image_dim, image_dim))

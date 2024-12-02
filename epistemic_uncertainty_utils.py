@@ -4,7 +4,10 @@ import os
 import tensorflow as tf
 from tensorflow import keras
 from keras.layers import BatchNormalization, Conv2D, add, Conv3D, Dropout
-
+class MonteCarloDropout(Dropout):
+    def call(self, inputs):
+        return super().call(inputs, training=True)
+        
 class Utils():
     # Relevant resblock functions (Keras API)
     def resblock_2D(self, num_filters, size_filter, stride_filter, x, drop_out):
@@ -12,7 +15,7 @@ class Utils():
         Fx = Conv2D(filters=num_filters, kernel_size=size_filter, strides=stride_filter,padding='same', activation='relu', 
                     data_format="channels_last")(x)
         if drop_out:
-            Fx = Dropout(drop_out)(Fx, training = True)
+            Fx = MonteCarloDropout(drop_out)(Fx, training = True)
 
         Fx = Conv2D(filters=num_filters, kernel_size=size_filter, padding='same', activation='relu', data_format="channels_last")(Fx)
         output = add([Fx, x])

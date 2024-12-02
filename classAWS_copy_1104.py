@@ -1461,6 +1461,34 @@ class DL(Utils):
         plt.xlim([0, 11])
         plt.ylim([-10, 10])
         depth_plt.show()
+
+    
+    def depth_error_as_function_of_fluorophore_thickness_and_depth(self, DF, DF_P):
+        #thickness changes going down the row 
+        concentration = ["1", "3", "7", "10"]
+        mus = ["1", "1.5", "2"]
+        fHb = ["0.5", "1", "1.5", "2"]
+        depth = 10
+
+        cmap = matplotlib.cm.jet
+        #norm = matplotlib.colors.Normalize(vmin=min(thickness), vmax=max(thickness))
+        #color_vals = [cmap(norm(x)) for x in thickness]
+        depth_plt = plt.figure()
+        # for i in range(len(thickness)):
+        #     indexes = [x * 6 + i for x in range(10)]
+        #     label_str = "t: " + str(thickness[i])
+        #     x = DF[indexes]
+        #     y = DF_P[indexes]
+        #     plt.scatter(x, y, s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
+        #     plt.legend(loc="upper left", prop={'size': 6})
+
+        # plt.ylabel("Predicted Depth (mm)")
+        # plt.xlabel("True Depth (mm)")
+        # plt.title("Min Depth")
+        # plt.xlim([0, 11])
+        # plt.ylim([0, 11])
+        # plt.plot(plt.xlim([0, 11]), plt.ylim([0, 11]),color='k')
+        # depth_plt.show()
         
         
     def predict_uncertainty(self): 
@@ -1696,7 +1724,7 @@ class DL(Utils):
         self.indxIncl = np.nonzero(self.temp_DF_pre_conversion)
 
         #self.Predict()
-        predict = self.modelD.predict([self.RE, self.FL], batch_size = 1)  
+        predict = self.modelD.predict([self.OP, self.FL], batch_size = 1)  
 
         # if dropout model is used
         '''
