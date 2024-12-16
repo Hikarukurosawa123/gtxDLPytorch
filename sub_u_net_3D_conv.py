@@ -564,10 +564,10 @@ class DL(Utils):
         outQF = Conv2D(filters=32, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(outQF) #outQF
         
-        outQF = BatchNormalization()(outQF)
+        #outQF = BatchNormalization()(outQF)
         
         outQF = Conv2D(filters=1, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(outQF)
+                        data_format="channels_last")(outQF)
 
         ## Depth Fluorescence Output Branch ##
         #first DF layer 
@@ -577,11 +577,11 @@ class DL(Utils):
         outDF = Conv2D(filters=32, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(outDF)
        
-        outDF = BatchNormalization()(outDF)
+        #outDF = BatchNormalization()(outDF)
      
         
         outDF = Conv2D(filters=1, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(outDF)
+                       data_format="channels_last")(outDF)
 
         ## Defining and compiling the model ##
         self.modelD = Model(inputs=[inOP_beg,inFL_beg], outputs=[outQF, outDF])#,outFL])

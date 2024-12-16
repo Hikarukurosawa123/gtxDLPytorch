@@ -1362,24 +1362,23 @@ class DL(Utils):
         depth_plt = plt.figure()
 
         for i in range(len(thickness)):
-            if i in [0, 4, 9, 14]:
+            if i in [0, 2, 4, 9, 14]:
                 label_str = "t: " + str(thickness[i])
                 x = DF[i*10:i*10+10, :,:]
                 y = DF_P[i*10:i*10+10, :,:]
-                non_zero_indx = np.nonzero(QF[i*10:i*10+10,:,:])
+                non_zero_indx = np.nonzero(self.temp_DF_pre_conversion[i*10:i*10+10,:,:])
 
                 plt.scatter(x[non_zero_indx], y[non_zero_indx], s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
-                plt.legend(loc="upper left", prop={'size': 3})
+                plt.legend(loc="upper left", prop={'size': 6})
 
         plt.ylabel("Predicted Depth (mm)")
         plt.xlabel("True Depth (mm)")
-        plt.title("Min Depth")
+        plt.title("Overall Depth")
         plt.xlim([0, 11])
         plt.ylim([0, 11])
         plt.plot(plt.xlim([0, 11]), plt.ylim([0, 11]),color='k')
         depth_plt.show()
 
-    
 
     def concentration_error_as_function_of_thickness_and_depth(self, DF, QF, QF_P):
 
@@ -1397,9 +1396,9 @@ class DL(Utils):
             label_str = "t: " + str(thickness[i])
             x = DF[i*10:i*10+10, :,:]
             y = QF_error[i*10:i*10+10,:,:]
-            non_zero_indx = np.nonzero(QF[i*10:i*10+10,:,:])
+            non_zero_indx = np.nonzero(self.temp_DF_pre_conversion[i*10:i*10+10,:,:])
             #plt.scatter(DF[i*10:i*10+10, :,:], QF_error[i*10:i*10+10,:,:], s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
-            if i in [0, 4, 9, 14]:
+            if i in [0, 2, 4, 9, 14]:
                 plt.scatter(x[non_zero_indx], y[non_zero_indx], s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
 
                 plt.legend(loc="upper left", prop={'size': 6})
@@ -1409,7 +1408,7 @@ class DL(Utils):
         plt.title("Concentration Error vs Depth")
         plt.xlim([0, 11])
         plt.ylim([-10, 10])
-        #plt.plot(plt.xlim([0, 11]), plt.ylim([0, 11]),color='k')
+        plt.axhline(y = 0, color = 'k', linestyle = '--') 
         depth_plt.show()    
 
     def depth_error_as_function_of_fluorophore_thickness_and_depth(self, DF, DF_P):
@@ -2081,13 +2080,15 @@ class DL(Utils):
 
         #self.depth_error_as_function_of_depth(DF_max, DFP_max)
         #self.depth_error_as_function_of_thickness_and_depth(DF_max, DFP_max)
-        #self.concentration_error_as_function_of_thickness_and_depth(self.DF, self.QF, QF_P)
-        #self.depth_error_as_function_of_thickness_and_depth_all(self.DF, DF_P, self.QF)
+        self.concentration_error_as_function_of_thickness_and_depth(self.DF, self.QF, QF_P)
+        self.depth_error_as_function_of_thickness_and_depth_all(self.DF, DF_P, self.QF)
 
-        self.depth_error_as_function_of_fluorophore_thickness_and_depth(DF_max, DFP_max)
-        self.concentration_error_as_function_of_fluorophore_thickness_and_depth(DF_max, QF_max, QFP_max)
+        #self.depth_error_as_function_of_fluorophore_thickness_and_depth(DF_max, DFP_max)
+        #self.concentration_error_as_funcdepth_error_as_function_of_fluorophore_thickness_and_depthtion_of_fluorophore_thickness_and_depth(DF_max, QF_max, QFP_max)
         # Plot true and predicted depth and concentration
-        num_plot_display = 60
+        
+        
+        num_plot_display = 150
         
         num_example_inclusion = [x * 19 for x in range(40)]
 

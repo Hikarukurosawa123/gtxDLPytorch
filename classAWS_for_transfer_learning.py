@@ -5,6 +5,7 @@ from sklearn import metrics
 from csv import writer, reader
 import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np, h5py
 import os, time, sys
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -26,11 +27,7 @@ from gtxDLClassAWSUtils import Utils
 import boto3 
 import io
 import openpyxl
-import keras.backend as K 
-class MonteCarloDropout(Dropout):
-    def call(self, inputs):
-        return super().call(inputs, training=True)
-        
+
 
 class DL(Utils):    
     # Initialization method runs whenever an instance of the class is initiated
@@ -39,7 +36,8 @@ class DL(Utils):
         isCase = input('Choose a case:\n Default\n Default4fx')
         self.case = isCase
         self.params = self.Defaults(self.case) # Define some default parameters based on the selected case
-        self.uncertainty = True
+        self.isTesting = False
+
         self.Model()
         return None  
     
@@ -119,10 +117,26 @@ class DL(Utils):
     def convert_background_val(self):
         #self.background_val = 25
         self.DF = np.array(self.DF)
+        #self.RE = np.array(self.RE)
+        #print("np.sum QF", np.sum(np.isnan(self.QF)))
+        #print("np.sum OP", np.sum(np.isnan(self.OP)))
+        #print("np.sum FL", np.sum(np.isnan(self.FL)))
+        #print("np.sum RE", np.sum(np.isnan(self.RE)))
+
+
         for x in range(self.DF.shape[0]): #for each case 
             for i in range(self.DF.shape[1]):
+                    
                 DF_zeros_per_column = self.DF[x, i, :] == 0
                 self.DF[x, i, DF_zeros_per_column] = self.background_val
+                
+        #for x in range(self.RE.shape[0]): #for each case 
+        #    for i in range(self.RE.shape[1]):
+                    
+        #        RE_nan_per_column = np.isnan(self.RE[x, i, :])
+        #        self.RE[x, i, RE_nan_per_column] = 0
+                
+           
         
         
     def add_classifier(self):
@@ -186,7 +200,6 @@ class DL(Utils):
         #plt.plot(data_num, DF_max)
                 
     def importData(self,isTesting=True,quickTest=False):
-        
         s3_client = boto3.client('s3')
         # Ask user to input if they are testing are not - indicates if you need to flip
         if isTesting == True:
@@ -217,40 +230,32 @@ class DL(Utils):
         obj = s3_client.get_object(Bucket=self.bucket, Key=self.file_key)
         dataTemp = obj['Body'].read()
         self.dataset = h5py.File(io.BytesIO(dataTemp))
-        
-        #obj  = r"C:\Users\Hikaru Kurosawa\submarine_vscode\data_set\Images210.mat"
-        #dataTemp = obj['Body'].read()
-        #self.dataset = h5py.File(obj)
         self.FL = self.dataset['F']
-        self.DF = self.dataset['DF']
+        three_branch = False
+        if three_branch:
+            self.DF = self.dataset['DF_sub']
+        else:
+            self.DF = self.dataset['DF']
         self.OP = self.dataset['OP']
         self.QF = self.dataset['QF']
-        #self.RE = self.dataset['RE']
+        self.RE = self.dataset['RE']
 
         self.temp_DF_pre_conversion = self.DF
 
         self.add_classifier() #add classifier before changing background value 
-
-        
-        #self.background_val = 0 #default to zero
-
-        #self.convert_background_val() #convert values of DF background 
-        
-        #FL_max = 0.007258041#np.max(self.FL)
-        #DF_max = 23.361952 #np.max(self.DF)
-        #OP_0_max = 0.042453066 #np.max(self.OP[0,:,:,:])
-        #OP_1_max = 2.0797756 #np.max(self.OP[1,:,:,:])
-        #QF_max = 9.998467 #np.max(self.QF)
-     
-
-
-        
         
         self.background_val = str(input('Enter the value of the background'))
         if self.background_val == '':
             self.background_val = 0 #default to zero
         
-        self.convert_background_val() #convert values of DF background 
+        self.convert_background_val() #convert values of DF background
+        
+        print(self.DF[:,:,0])
+        print(self.OP[:,:,:,0])
+        print(self.OP[:,:,:, 1])
+        print(self.QF[:,:,0])
+        print(self.FL[:,:,0])
+
     
         # Check whether the user is using the single or multiple MAT format 
         # I.e., looking at individual MAT files (getDims=3) or looking at MAT files with more than one sample (getDim=4)
@@ -300,22 +305,23 @@ class DL(Utils):
             start = time.perf_counter()
             
           
-
-
-            self.FL = np.reshape(self.FL[indxFx,:,:,0:numSets],(len(indxFx),self.params['xX'],self.params['yY'],numSets,1))
+            num_beg = 5000
+#
+            #numSets = 100
+            self.FL = np.reshape(self.FL[indxFx,:,:,num_beg:numSets],(len(indxFx),self.params['xX'],self.params['yY'],numSets - num_beg,1))
             
-            #self.RE = np.reshape(self.RE[indxFx,:,:,0:numSets],(len(indxFx),self.params['xX'],self.params['yY'],numSets,1))
+            self.RE = np.reshape(self.RE[indxFx,:,:,num_beg:numSets],(len(indxFx),self.params['xX'],self.params['yY'],numSets - num_beg,1))
 
-            self.OP = self.OP[:,:,:,0:numSets]
-            self.DF = self.DF[:,:,0:numSets]
-            self.DF = np.reshape(self.DF,(self.params['xX'],self.params['yY'],numSets,1))
-            self.temp_DF_pre_conversion = self.temp_DF_pre_conversion[:,:,0:numSets]
-            self.temp_DF_pre_conversion = np.reshape(self.temp_DF_pre_conversion,(self.params['xX'],self.params['yY'],numSets,1))
-            self.QF = self.QF[:,:,0:numSets]
-            self.QF = np.reshape(self.QF,(self.params['xX'],self.params['yY'],numSets,1))
+            self.OP = self.OP[:,:,:,num_beg:numSets]
+            self.DF = self.DF[:,:,num_beg:numSets]
+            self.DF = np.reshape(self.DF,(self.params['xX'],self.params['yY'],self.DF.shape[2],1))
+            self.temp_DF_pre_conversion = self.temp_DF_pre_conversion[:,:,num_beg:numSets]
+            self.temp_DF_pre_conversion = np.reshape(self.temp_DF_pre_conversion,(self.params['xX'],self.params['yY'],numSets - num_beg,1))
+            self.QF = self.QF[:,:,num_beg:numSets]
+            self.QF = np.reshape(self.QF,(self.params['xX'],self.params['yY'],self.QF.shape[2],1))
 
             # Reorder data
-            #self.RE = np.swapaxes(self.RE,0,3)
+            self.RE = np.swapaxes(self.RE,0,3)
 
             self.FL = np.swapaxes(self.FL,0,3)
             self.OP = np.swapaxes(self.OP,0,3)
@@ -331,7 +337,7 @@ class DL(Utils):
             self.OP[:,:,:,1] *= self.params['scaleOP1']
             self.DF *= self.params['scaleDF']
             self.QF *= self.params['scaleQF']
-            #self.RE[:,:,:,0] *= self.params['scaleRE']
+            self.RE[:,:,:,0] *= self.params['scaleRE']
             #self.OP[:,:,:,0] = self.OP[:,:,:,0] / OP_0_max
             #self.OP[:,:,:,1] = self.OP[:,:,:,1] / OP_1_max
             #self.DF /= DF_max
@@ -378,7 +384,7 @@ class DL(Utils):
             start = time.perf_counter()
             
             self.FL = np.reshape(self.FL[indxFx,:,:],(len(indxFx),self.params['xX'],self.params['yY'],1,1))
-            #self.RE = np.reshape(self.RE[indxFx,:,:],(len(indxFx),self.params['xX'],self.params['yY'],1,1))
+            self.RE = np.reshape(self.RE[indxFx,:,:],(len(indxFx),self.params['xX'],self.params['yY'],1,1))
 
             #self.OP = self.OP[:,:,:]
             #self.OP = self.OP.reshape((2,self.params['xX'], self.params['xX'],1))
@@ -431,244 +437,141 @@ class DL(Utils):
             
         #self.FLRE = self.FL/self.RE
         
-    def drop_out(self, x, drop_out):
+    def drop_out(self, x, drop_out = None):
         if drop_out: 
-            print("inside dropout")
-            x = MonteCarloDropout(0.5)(x, training = True)
+            x = Dropout(drop_out)(x, training = True)
     
         return x 
 
     
-
-    def load(self):
-
-        h5_files = []
-        for folder in os.listdir("ModelParameters"):
-            if not folder.endswith((".h5",".log",".xml", ".keras")):
-                for file in os.listdir("ModelParameters//"+folder):
-                    if file.endswith(".keras") or file.endswith(".h5"):
-                        filename = "ModelParameters//"+folder+'//'+file
-                        h5_files.append(filename)
-                        print(filename)        
-        while True: # Loop until user makes acceptable choice for the input directory
-            loadFile = input('Enter the general and specific directory pertaining to the .h5 (weights) file you would like to load: ')
-            if loadFile == '': # User enters nothing; break
-                break
-            elif loadFile in h5_files:
-                #self.xml_file_name = loadFile.replace(".h5", "_params.xml")
-                #self.new_model = tf.keras.models.load_model(loadFile, compile=False)
-                #self.new_model.load_weights(loadFile)
-                self.modelD = load_model(loadFile, compile=False) 
-                self.modelD.summary()# Load the weights into this model
-                self.importData(isTesting=True,quickTest=True)
-                break
-                    
-            else: # If the modelD attribute does not exist
-                print('\nModel is not currently defined - select again.') 
-                break
-
-    
-
     def Model(self):
         """The deep learning architecture gets defined here"""
-
-        drop_out = 0.5
+        if self.isTesting: 
+            drop_out = 0.5
+        else: 
+            drop_out = None
 
         print("drop_out", drop_out)
+        ## Input Optical Properties ##
         inOP_beg = Input(shape=(self.params['xX'],self.params['yY'],2))
+        #inOP = OpData
         ## Input Multi-Dimensional Fluorescence ##
         inFL_beg = Input(shape=(self.params['xX'],self.params['yY'],self.params['nF']))
         #inFL = FlData
+        print("inOP_beg shape: ", inOP_beg.shape)
+        print("inFL_beg shape: ", inFL_beg.shape)
         
         ## NOTE: Batch normalization can cause instability in the validation loss
 
         ## Optical Properties Branch ##
         inOP = Conv2D(filters=self.params['nFilters2D'], kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inOP_beg)
+        inOP.trainable = False
         #outOP1 = inOP
+        #inOP = BatchNormalization()(inOP)  
+        #inOP = self.drop_out(inOP, drop_out) #drop out 1
         
-        inOP = self.drop_out(inOP, drop_out) #drop out 1
+        print("inOP 1 shape: ", inOP.shape)
 
-        inOP = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+        inOP = Conv2D(filters=int(self.params['nFilters2D']/2), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inOP)
+        inOP.trainable = False
+
+        print("inOP 2 shape: ", inOP.shape)
+
         #outOP2 = inOP
-        inOP = self.drop_out(inOP, drop_out) #drop out 1
+        #inOP = self.drop_out(inOP, drop_out) #drop out 3
 
-        inOP = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+        #inOP = BatchNormalization()(inOP)
+        inOP = Conv2D(filters=int(self.params['nFilters2D']/2), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inOP)
-        #outOP3 = inOP
-        inOP = self.drop_out(inOP, drop_out) #drop out 1
+        inOP.trainable = False
 
-        inOP = self.resblock_2D(self.params['nFilters2D']//2, self.params['kernelResBlock2D'], self.params['strideConv2D'], inOP, drop_out)
+        print("inOP 3 shape: ", inOP.shape)
+
+        #outOP3 = inOP
+        #inOP = self.drop_out(inOP, drop_out) #drop out 3
+
+        #inOP = BatchNormalization()(inOP)
+        inOP = self.resblock_2D(int(self.params['nFilters2D']/2), self.params['kernelResBlock2D'], self.params['strideConv2D'], inOP)
+        #inOP = BatchNormalization()(inOP)
+        inOP.trainable = False
+
+        print("inOP 4 shape: ", inOP.shape)
+
 
         ## Fluorescence Input Branch ##
         input_shape = inFL_beg.shape
+        inFL = Conv2D(filters=self.params['nFilters3D'], kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+                      padding='same', activation=self.params['activation'], input_shape=input_shape[1:], data_format="channels_last")(inFL_beg)
+        inFL.trainable = False
 
-        inFL = Conv2D(filters=self.params['nFilters2D'], kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
-                      padding='same', activation=self.params['activation'], input_shape=input_shape, data_format="channels_last")(inFL_beg)
-        inFL = self.drop_out(inFL, drop_out) #drop out 1
+        print("inFL 1 shape: ", inFL.shape)
 
-        inFL = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+        #outFL1 = inFL
+        #inFL = self.drop_out(inFL, drop_out) #drop out 3
+
+        #inFL = BatchNormalization()(inFL)
+        inFL = Conv2D(filters=int(self.params['nFilters2D']/2), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inFL)
+        print("inFL 2 shape: ", inFL.shape)
+        inFL.trainable = False
+
         #outFL2 = inFL
-        inFL = self.drop_out(inFL, drop_out) #drop out 1
+        #inFL = self.drop_out(inFL, drop_out) #drop out 3
 
-        inFL = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+        #inFL = BatchNormalization()(inFL)
+        inFL = Conv2D(filters=int(self.params['nFilters2D']/2), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inFL)
+        print("inFL 3 shape: ", inFL.shape)
+        inFL.trainable = False
+
         #outFL3 = inFL
-        inFL = self.drop_out(inFL, drop_out) #drop out 1
+        #inFL = self.drop_out(inFL, drop_out) #drop out 3
 
         #inFL = BatchNormalization()(inFL)
-        inFL = self.resblock_2D(self.params['nFilters2D']//2, self.params['kernelResBlock2D'], self.params['strideConv2D'], inFL, drop_out)
+        inFL = self.resblock_2D(int(self.params['nFilters2D']/2), self.params['kernelResBlock2D'], self.params['strideConv2D'], inFL)
         #inFL = BatchNormalization()(inFL)
+        inFL.trainable = False
+
+        print("inFL 4 shape: ", inFL.shape)
+
         
         ## Reshape ##
-        #zReshape = int(((self.params['nFilters3D']/2)*self.params['nF'])/self.params['strideConv3D'][2])
+        #zReshape = int(((self.params['nFilters2D']/2)*self.params['nF'])/self.params['strideConv2D'][2])
         #inFL = Reshape((self.params['xX'],self.params['yY'],zReshape))(inFL)
 
         ## Concatenate Branch ##
         concat = concatenate([inOP,inFL],axis=-1)
-        concat = self.drop_out(concat, drop_out) #drop out 3
-
+        #concat = self.drop_out(concat, drop_out) #drop out 3
+        concat.trainable = False
         concat = SeparableConv2D(filters=self.params['nFilters2D'], kernel_size=self.params['kernelConv2D'], 
                                  strides=self.params['strideConv2D'], padding='same', activation=self.params['activation'], 
                                  data_format="channels_last")(concat)
-        
-        concat = self.drop_out(concat, drop_out) #drop out 3
+        concat.trainable = False
+
+        #concat = self.drop_out(concat, drop_out) #drop out 3
 
         #concat = BatchNormalization()(concat)
-        concat = self.resblock_2D(self.params['nFilters2D'], self.params['kernelResBlock2D'], self.params['strideConv2D'], concat, drop_out) 
-        concat = self.drop_out(concat, drop_out) #drop out 3
+        concat = self.resblock_2D(self.params['nFilters2D'], self.params['kernelResBlock2D'], self.params['strideConv2D'], concat) 
+        #concat = self.drop_out(concat, drop_out) #drop out 3
+        concat.trainable = False
 
         ## Quantitative Fluorescence Output Branch ##
         outQF = Conv2D(filters=64, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(concat)
-        outQF = self.drop_out(outQF, drop_out) #drop out 3
+        #outQF = self.drop_out(outQF, drop_out) #drop out 3
 
-        outQF = BatchNormalization()(outQF)
-        outQF = Conv2D(filters=32, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(outQF)
-        
-        outQF = BatchNormalization()(outQF)
-        
-        outQF = Conv2D(filters=2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(outQF)
-
-        ## Depth Fluorescence Output Branch ##
+        #first DF layer 
         outDF = Conv2D(filters=64, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(concat)
-        outDF = self.drop_out(outDF, drop_out) #drop out 3
 
-        outDF = BatchNormalization()(outDF)
-        outDF = Conv2D(filters=32, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(outDF)
-       
-        outDF = BatchNormalization()(outDF)
-        
-        outDF = Conv2D(filters=2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(outDF)
-
-    
-        self.modelD = Model(inputs=[inOP_beg,inFL_beg], outputs=[outQF, outDF])#,outFL])
-        self.modelD.compile(loss=[self.laplacian_loss, self.laplacian_loss],
-                      optimizer=getattr(keras.optimizers,self.params['optimizer'])(learning_rate=self.params['learningRate']),
-                      metrics=[self.mae_on_first_channel, self.mae_on_first_channel])
-        self.modelD.summary()
-        
-        return self.modelD
-    def laplacian_loss(self, y_true, y_pred):
-        mean_true = y_true[:, :, :, 0]
-        mean_pred = y_pred[:, :, :, 0]
-        scale_pred = y_pred[:, :, :, 1]
-        loss = tf.abs(tf.math.divide(tf.math.abs(mean_true - mean_pred), scale_pred + 1e-2) + tf.math.log(scale_pred + 1e-2))
-
-        return loss
-
-    def mae_on_first_channel(self, y_true, y_pred):
-        mean_true = y_true[:, :, :, 0]
-        mean_pred = y_pred[:, :, :, 0]
-
-        loss = tf.reduce_mean(tf.abs(mean_true - mean_pred))
-        return loss 
-
-    def Model_uncertainty(self):
-        """The deep learning architecture gets defined here"""
-
-        drop_out = 0.5
-
-        inOP_beg = Input(shape=(self.params['xX'],self.params['yY'],2))
-        ## Input Multi-Dimensional Fluorescence ##
-        inFL_beg = Input(shape=(self.params['xX'],self.params['yY'],self.params['nF']))
-        #inFL = FlData
-        
-        ## NOTE: Batch normalization can cause instability in the validation loss
-
-        ## Optical Properties Branch ##
-        inOP = Conv2D(filters=self.params['nFilters2D'], kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
-                      padding='same', activation=self.params['activation'], data_format="channels_last")(inOP_beg)
-        #outOP1 = inOP
-        
-        inOP = self.drop_out(inOP, drop_out) #drop out 1
-
-        inOP = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
-                      padding='same', activation=self.params['activation'], data_format="channels_last")(inOP)
-        #outOP2 = inOP
-        inOP = self.drop_out(inOP, drop_out) #drop out 1
-
-        inOP = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
-                      padding='same', activation=self.params['activation'], data_format="channels_last")(inOP)
-        #outOP3 = inOP
-        inOP = self.drop_out(inOP, drop_out) #drop out 1
-
-        inOP = self.resblock_2D(self.params['nFilters2D']//2, self.params['kernelResBlock2D'], self.params['strideConv2D'], inOP, drop_out)
-
-        ## Fluorescence Input Branch ##
-        input_shape = inFL_beg.shape
-
-        inFL = Conv2D(filters=self.params['nFilters2D'], kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
-                      padding='same', activation=self.params['activation'], input_shape=input_shape, data_format="channels_last")(inFL_beg)
-        inFL = self.drop_out(inFL, drop_out) #drop out 1
-
-        inFL = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
-                      padding='same', activation=self.params['activation'], data_format="channels_last")(inFL)
-        #outFL2 = inFL
-        inFL = self.drop_out(inFL, drop_out) #drop out 1
-
-        inFL = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
-                      padding='same', activation=self.params['activation'], data_format="channels_last")(inFL)
-        #outFL3 = inFL
-        inFL = self.drop_out(inFL, drop_out) #drop out 1
-
-        #inFL = BatchNormalization()(inFL)
-        inFL = self.resblock_2D(self.params['nFilters2D']//2, self.params['kernelResBlock2D'], self.params['strideConv2D'], inFL, drop_out)
-        #inFL = BatchNormalization()(inFL)
-        
-        ## Reshape ##
-        #zReshape = int(((self.params['nFilters3D']/2)*self.params['nF'])/self.params['strideConv3D'][2])
-        #inFL = Reshape((self.params['xX'],self.params['yY'],zReshape))(inFL)
-
-        ## Concatenate Branch ##
-        concat = concatenate([inOP,inFL],axis=-1)
-        concat = self.drop_out(concat, drop_out) #drop out 3
-
-        concat = SeparableConv2D(filters=self.params['nFilters2D'], kernel_size=self.params['kernelConv2D'], 
-                                 strides=self.params['strideConv2D'], padding='same', activation=self.params['activation'], 
-                                 data_format="channels_last")(concat)
-        
-        concat = self.drop_out(concat, drop_out) #drop out 3
-
-        #concat = BatchNormalization()(concat)
-        concat = self.resblock_2D(self.params['nFilters2D'], self.params['kernelResBlock2D'], self.params['strideConv2D'], concat, drop_out) 
-        concat = self.drop_out(concat, drop_out) #drop out 3
-
-        ## Quantitative Fluorescence Output Branch ##
-        outQF = Conv2D(filters=64, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(concat)
-        outQF = self.drop_out(outQF, drop_out) #drop out 3
+        #add reslayer 
+        #out_QF_DF = add([outQF, outDF])
 
         #outQF = BatchNormalization()(outQF)
         outQF = Conv2D(filters=32, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(outQF)
+                       activation=self.params['activation'], data_format="channels_last")(outQF) #outQF
         
         outQF = BatchNormalization()(outQF)
         
@@ -676,9 +579,9 @@ class DL(Utils):
                        activation=self.params['activation'], data_format="channels_last")(outQF)
 
         ## Depth Fluorescence Output Branch ##
-        outDF = Conv2D(filters=64, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(concat)
-        outDF = self.drop_out(outDF, drop_out) #drop out 3
+        #outDF = Conv2D(filters=64, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
+        #               activation=self.params['activation'], data_format="channels_last")(concat)
+        #outDF = self.drop_out(outDF, drop_out) #drop out 3
 
         #outDF = BatchNormalization()(outDF)
         outDF = Conv2D(filters=32, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
@@ -691,14 +594,15 @@ class DL(Utils):
         outDF = Conv2D(filters=1, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(outDF)
 
-    
+        ## Defining and compiling the model ##
         self.modelD = Model(inputs=[inOP_beg,inFL_beg], outputs=[outQF, outDF])#,outFL])
         self.modelD.compile(loss=['mae', 'mae'],
                       optimizer=getattr(keras.optimizers,self.params['optimizer'])(learning_rate=self.params['learningRate']),
                       metrics=['mae', 'mae'])
         self.modelD.summary()
-        
-        return self.modelD
+        ## Outputs for feature maps ##
+        #self.modelFM = Model(inputs=[OpData,FlData], outputs=[FlData, OpData, outFL1, outOP1, outFL2, outOP2, outFL3, outOP3]) 
+        return None
     
     def Fit(self,isTransfer):
         # Where to export information about the fit
@@ -817,7 +721,7 @@ class DL(Utils):
         """Make predictions of the labels using the testing data (note that this is different from the Evaluate method, since the evaluate method tells us the metrics (without making the predictions) while this method only makes predictions"""
         
         
-        predict = self.modelD.predict([self.OP, self.FL])  
+        predict = self.modelD.predict([self.RE, self.FL])  
         if loadandpredict==True:
             predict = self.new_model.predict([self.OP, self.FL])
         QF_P = predict[0] 
@@ -1085,9 +989,10 @@ class DL(Utils):
 
         for x in range(DF.shape[0]):
             for i in range(DF.shape[1]):
-
-                DF_zeros_per_column = DF[x, i, :] == self.background_val
-                DF_zeros[x, i, DF_zeros_per_column] = np.nan
+                
+                #DF_zeros_per_column = DF[x, i, :] == self.background_val
+                #DF_zeros[x, i, DF_zeros_per_column] = np.nan
+                pass
                            
         DF_min_per_case = np.nanmin(DF_zeros, axis = (1,2))
         
@@ -1263,7 +1168,17 @@ class DL(Utils):
 
         err_Q_graph.show()
         
-        
+    def concentration_error_vs_depth(self, QF, QF_P, DF):
+        err_Q_graph = plt.figure()
+        err_Q = np.array(np.abs(QF_P-QF)) 
+        #err_Q = np.reshape(err_Q, (err_Q.shape[0], -1))
+                                                            
+        plt.scatter(DF[self.indxIncl],err_Q[self.indxIncl], s = 1)
+        plt.ylabel("Absolute Concentration Error (ug/ml))")
+        plt.xlabel("True Depth (mm)")
+        plt.colorbar()
+
+        err_Q_graph.show()    
         
     def plot_loss_curve_from_log(self):
         h5_files = []
@@ -1308,29 +1223,7 @@ class DL(Utils):
         plt.ylim([0, 1])
       
     
-    def mean_abs_error_at_ture_and_predicted_tumour_regions(self, DF, DF_P, QF, QF_P):
-        #calculate mean abs error at relevant region 
-        
-        #DF, QF shape - (101, 101, number of data)
-        DF_mean_abs_err = []
-        QF_mean_abs_err = [] 
-        
-        DF = np.array(DF)
-        QF = np.array(QF)
-        DF_P = np.array(DF_P)
-        QF_P = np.array(QF_P)
-        
-        print(DF_P[0,:,0])
-        print(QF_P[0,:,0])
-        
-        for i in range(DF.shape[2]): #iterate over each tumour case 
-            #identify tumour region - DF 
-            #true_DF_tumour_region = DF[:,:,i] != self.background_val
-            pass 
-        
-        pass 
     
-            
     def confidence_interval(self, metric, num_data):        
         z_95 = 1.96 
         
@@ -1398,14 +1291,224 @@ class DL(Utils):
             else: # If the modelD attribute does not exist
                 print('\nModel is not currently defined - select again.') 
                 break
+
+    def min_depth_error_as_function_of_depth(self, DF_max, DFP_max):
+        min_depth_error = np.abs(DF_max - DFP_max)
+        radius = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+        min_depth_error_f_radius = []
+        min_depth_error_std_f_radius = []
+
+        for i in range(len(radius)):
+            min_depth_error_f_radius.append(np.mean(min_depth_error[i*10:i*10+10]))
+            min_depth_error_std_f_radius.append(np.std(min_depth_error[i*10:i*10+10]))
+
+        min_depth_error_plt = plt.figure()
+        plt.bar(radius, min_depth_error_f_radius, width = 0.15)
+        plt.errorbar(radius,min_depth_error_f_radius , yerr=min_depth_error_std_f_radius, capsize=3, fmt="r--o", ecolor = "black")
+        min_depth_error_plt.show()
+
+        plt.ylabel("average min depth prediction error (mm)")
+        plt.xlabel("radius (scale factor)")
+        plt.title("Min Depth Error vs Radius")
+
+    
+    def depth_error_as_function_of_depth(self, DF_max, DFP_max):
+        look_up_scale = [0.1, 0.2, 0.3, 0.4, 0.05, 0.5, 0.6, 0.7, 0.8, 0.9, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 1, 1.1, 1.2, 1.3, 1.4, 1.05, 1.5, 1.6, 1.7, 1.8, 1.9, 1.15, 1.25, 1.35, 1.45, 1.55, 1.65, 1.75, 1.85, 1.95, 1, 2]
+        radius = [look_up_scale[x] for x in range(len(look_up_scale))] 
                 
+        #norm = matplotlib.colors.Normalize(vmin=1, vmax=20)
+        #cmap = matplotlib.cm.jet
+        #m = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+        #color_vals = [m.to_rgb(x) for x in radius]
+
+        cmap = matplotlib.cm.jet
+        norm = matplotlib.colors.Normalize(vmin=0.1, vmax=2)
+        color_vals = [cmap(norm(x)) for x in radius]
+
+        depth_plt = plt.figure()
+        for i in range(len(radius)):
+            label_str = "s: " + str(radius[i])
+            plt.scatter(DF_max[i*19:i*19+19], DFP_max[i*19:i*19+19], s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
+            plt.legend(loc="upper left", prop={'size': 3})
+        plt.ylabel("Predicted Depth (mm)")
+        plt.xlabel("True Depth (mm)")
+        plt.title("Min Depth")
+        plt.xlim([0, 11])
+        plt.ylim([0, 11])
+        plt.plot(plt.xlim([0, 11]), plt.ylim([0, 11]),color='k')
+        depth_plt.show()
+
+    def depth_error_as_function_of_thickness_and_depth(self, DF, DF_P):
+        #DF_error = np.abs(DF-DF_P)
+        thickness = [x for x in range(1, 16)]
+        #depths = [x for x in range(1,11)]
+
+        cmap = matplotlib.cm.jet
+        norm = matplotlib.colors.Normalize(vmin=min(thickness), vmax=max(thickness))
+        color_vals = [cmap(norm(x)) for x in thickness]
+        depth_plt = plt.figure()
+
+        for i in range(len(thickness)):
+            if i in [0, 4, 9, 14]:
+                label_str = "t: " + str(thickness[i])
+                plt.scatter(DF[i*10:i*10+10], DF_P[i*10:i*10+10], s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
+                plt.legend(loc="upper left", prop={'size': 3})
+
+        plt.ylabel("Predicted Depth (mm)")
+        plt.xlabel("True Depth (mm)")
+        plt.title("Min Depth")
+        plt.xlim([0, 11])
+        plt.ylim([0, 11])
+        plt.plot(plt.xlim([0, 11]), plt.ylim([0, 11]),color='k')
+        depth_plt.show()
+
+    def depth_error_as_function_of_thickness_and_depth_all(self, DF, DF_P, QF):
+        #DF_error = np.abs(DF-DF_P)
+        thickness = [x for x in range(1, 16)]
+        #depths = [x for x in range(1,11)]
+
+        cmap = matplotlib.cm.jet
+        norm = matplotlib.colors.Normalize(vmin=min(thickness), vmax=max(thickness))
+        color_vals = [cmap(norm(x)) for x in thickness]
+        depth_plt = plt.figure()
+
+        for i in range(len(thickness)):
+            if i in [0, 4, 9, 14]:
+                label_str = "t: " + str(thickness[i])
+                x = DF[i*10:i*10+10, :,:]
+                y = DF_P[i*10:i*10+10, :,:]
+                non_zero_indx = np.nonzero(QF[i*10:i*10+10,:,:])
+
+                plt.scatter(x[non_zero_indx], y[non_zero_indx], s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
+                plt.legend(loc="upper left", prop={'size': 3})
+
+        plt.ylabel("Predicted Depth (mm)")
+        plt.xlabel("True Depth (mm)")
+        plt.title("Min Depth")
+        plt.xlim([0, 11])
+        plt.ylim([0, 11])
+        plt.plot(plt.xlim([0, 11]), plt.ylim([0, 11]),color='k')
+        depth_plt.show()
+
+    
+
+    def concentration_error_as_function_of_thickness_and_depth(self, DF, QF, QF_P):
+
+        QF_error = (QF_P-QF)
+        thickness = [x for x in range(1, 16)]
+        depths = [x for x in range(1,11)]
+        
+
+        cmap = matplotlib.cm.jet
+        norm = matplotlib.colors.Normalize(vmin=min(thickness), vmax=max(thickness))
+        color_vals = [cmap(norm(x)) for x in thickness]
+        depth_plt = plt.figure()
+
+        for i in range(len(thickness)):
+            label_str = "t: " + str(thickness[i])
+            x = DF[i*10:i*10+10, :,:]
+            y = QF_error[i*10:i*10+10,:,:]
+            non_zero_indx = np.nonzero(QF[i*10:i*10+10,:,:])
+            #plt.scatter(DF[i*10:i*10+10, :,:], QF_error[i*10:i*10+10,:,:], s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
+            if i in [0, 4, 9, 14]:
+                plt.scatter(x[non_zero_indx], y[non_zero_indx], s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
+
+                plt.legend(loc="upper left", prop={'size': 6})
+
+        plt.ylabel("Concentration Error (Prediction - True) (ug/ml)")
+        plt.xlabel("True Depth (mm)")
+        plt.title("Concentration Error vs Depth")
+        plt.xlim([0, 11])
+        plt.ylim([-10, 10])
+        #plt.plot(plt.xlim([0, 11]), plt.ylim([0, 11]),color='k')
+        depth_plt.show()    
+
+    def depth_error_as_function_of_fluorophore_thickness_and_depth(self, DF, DF_P):
+        #thickness changes going down the row 
+        thickness = np.linspace(0.5, 3, num = 6)
+        depth = 10
+
+        cmap = matplotlib.cm.jet
+        norm = matplotlib.colors.Normalize(vmin=min(thickness), vmax=max(thickness))
+        color_vals = [cmap(norm(x)) for x in thickness]
+        depth_plt = plt.figure()
+        for i in range(len(thickness)):
+            indexes = [x * 6 + i for x in range(10)]
+            label_str = "t: " + str(thickness[i])
+            x = DF[indexes]
+            y = DF_P[indexes]
+            plt.scatter(x, y, s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
+            plt.legend(loc="upper left", prop={'size': 6})
+
+        plt.ylabel("Predicted Depth (mm)")
+        plt.xlabel("True Depth (mm)")
+        plt.title("Min Depth")
+        plt.xlim([0, 11])
+        plt.ylim([0, 11])
+        plt.plot(plt.xlim([0, 11]), plt.ylim([0, 11]),color='k')
+        depth_plt.show()
+        
+    def concentration_error_as_function_of_fluorophore_thickness_and_depth(self, DF, QF, QF_P):
+        #thickness changes going down the row 
+        thickness = np.linspace(0.5, 3, num = 6)
+
+        #QF_error = np.mean(QF_P[self.indxIncl] - QF[self.indxIncl], axis = (1,2))
+
+        cmap = matplotlib.cm.jet
+        norm = matplotlib.colors.Normalize(vmin=min(thickness), vmax=max(thickness))
+        color_vals = [cmap(norm(x)) for x in thickness]
+        depth_plt = plt.figure()
+        for i in range(len(thickness)):
+            indexes = [x * 6 + i for x in range(10)]
+            label_str = "t: " + str(thickness[i])
+            x = DF[indexes]
+            y = QF_P[indexes] - QF[indexes]
+            plt.scatter(x, y, s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
+            plt.legend(loc="upper left", prop={'size': 3})
+
+        plt.ylabel("Concentration Error (Prediction - True) (ug/ml)")
+        plt.xlabel("True Depth (mm)")
+        plt.title("Concentration Error vs Depth")
+        plt.xlim([0, 11])
+        plt.ylim([-10, 10])
+        depth_plt.show()
+
+    
+    def depth_error_as_function_of_fluorophore_thickness_and_depth(self, DF, DF_P):
+        #thickness changes going down the row 
+        concentration = ["1", "3", "7", "10"]
+        mus = ["1", "1.5", "2"]
+        fHb = ["0.5", "1", "1.5", "2"]
+        depth = 10
+
+        cmap = matplotlib.cm.jet
+        #norm = matplotlib.colors.Normalize(vmin=min(thickness), vmax=max(thickness))
+        #color_vals = [cmap(norm(x)) for x in thickness]
+        depth_plt = plt.figure()
+        # for i in range(len(thickness)):
+        #     indexes = [x * 6 + i for x in range(10)]
+        #     label_str = "t: " + str(thickness[i])
+        #     x = DF[indexes]
+        #     y = DF_P[indexes]
+        #     plt.scatter(x, y, s = 2, label=label_str, norm = norm, cmap = cmap, c = [color_vals[i]])
+        #     plt.legend(loc="upper left", prop={'size': 6})
+
+        # plt.ylabel("Predicted Depth (mm)")
+        # plt.xlabel("True Depth (mm)")
+        # plt.title("Min Depth")
+        # plt.xlim([0, 11])
+        # plt.ylim([0, 11])
+        # plt.plot(plt.xlim([0, 11]), plt.ylim([0, 11]),color='k')
+        # depth_plt.show()
+        
+        
     def predict_uncertainty(self): 
-        self.isTesting = False
+        self.isTesting = True
         h5_files = []
         for folder in os.listdir("ModelParameters"):
             if not folder.endswith((".h5",".log",".xml")):
                 for file in os.listdir("ModelParameters//"+folder):
-                    if file.endswith(".h5") or file.endswith(".keras"):
+                    if file.endswith(".h5"):
                         filename = "ModelParameters//"+folder+'//'+file
                         h5_files.append(filename)
                         print(filename)        
@@ -1415,18 +1518,13 @@ class DL(Utils):
                 break
             elif loadFile in h5_files:
 
-                #self.Model()
+                self.Model()
+                self.modelD.load_weights(loadFile)
 
                 #self.no_dropout_model = tf.keras.models.load_model(loadFile, compile=False)
                 #self.no_dropout_model.load_weights(loadFile)
                 #self.modelD = load_model(loadFile, compile=False) 
                 #self.new_model.summary()# Load the weights into this model
-                self.modelD = load_model(loadFile, compile = False) 
-                #self.modelD = self.Model()
-                #self.modelD.summary()
-                #self.modelD = self.Model()
-                self.modelD.load_weights(loadFile)
-
                 self.importData(isTesting=True,quickTest=True)
                 break
                     
@@ -1450,9 +1548,7 @@ class DL(Utils):
             #tmp = self.modelD.predict([self.OP, self.FL])  
             #depth_prediction_ensembles_no_dropout[:,:,:,i] = tmp[1].squeeze()
             #concentration_prediction_ensembles_no_dropout[:,:,:,i] = tmp[0].squeeze()
-
-            tmp = self.modelD.predict([self.OP, self.FL], batch_size = 1)  
-            #tmp = self.modelD([self.OP, self.FL], training = True)
+            tmp = self.modelD.predict([self.OP, self.FL])  
             depth_prediction_ensembles[:,:,:,i] = tmp[1].squeeze()
             concentration_prediction_ensembles[:,:,:,i] = tmp[0].squeeze()
 
@@ -1470,6 +1566,7 @@ class DL(Utils):
             depth_prediction_uncertainty[i, :,:] = np.std(depth_prediction_ensembles[i,:,:,:].squeeze(), axis = 2) 
             concentration_prediction_uncertainty[i, :,:] = np.std(concentration_prediction_ensembles[i,:,:,:].squeeze(), axis = 2)
 
+
         DF_error = depth_prediction_mean - self.DF.squeeze()
         QF_error = concentration_prediction_mean - self.QF.squeeze()
         depth_prediction_uncertainty = np.array(depth_prediction_uncertainty)
@@ -1479,7 +1576,7 @@ class DL(Utils):
         #for i in range(depth_prediction_uncertainty.shape[0]):
         #    x = (depth_prediction_uncertainty[i,:,:] == np.min(depth_prediction_uncertainty[i,:,:]))
         #    min_index = np.where(depth_prediction_uncertainty[i,:,:] == np.min(depth_prediction_uncertainty[i,:,:]))
-        #   error_min_depth[i] = depth_prediction_uncertainty[i,min_index[0][0], min_index[1][0]]
+        #    error_min_depth[i] = depth_prediction_uncertainty[i,min_index[0][0], min_index[1][0]]
 
         
 
@@ -1509,26 +1606,26 @@ class DL(Utils):
         
         depth_graph.show() 
         '''
-        for i in range(20):
+        
+        for i in range(10):
             fig, axs = plt.subplots(2,4)
             plt.set_cmap('jet')
-            
-            
             plt.colorbar(axs[0,0].imshow(self.DF[i,:,:],vmin=0,vmax=15), ax=axs[0, 0],fraction=0.046, pad=0.04)
             axs[0,0].axis('off')
             axs[0,0].set_title('True Depth (mm)')
+            
             plt.colorbar(axs[0,1].imshow(depth_prediction_mean[i,:,:],vmin=0,vmax=15), ax=axs[0, 1],fraction=0.046, pad=0.04)
             axs[0,1].axis('off')
             axs[0,1].set_title('Predicted Depth (mm)')
             plt.colorbar(axs[0,2].imshow(abs(DF_error[i,:,:]),vmin=0,vmax=15), ax=axs[0, 2],fraction=0.046, pad=0.04)
             axs[0,2].axis('off')
             axs[0,2].set_title('|Error (mm)|')
-            plt.colorbar(axs[0,3].imshow(depth_prediction_uncertainty[i,:,:],vmin=0,vmax=1), ax=axs[0, 3],fraction=0.046, pad=0.04)
+            plt.colorbar(axs[0,3].imshow(depth_prediction_uncertainty[i,:,:],vmin=0,vmax=3), ax=axs[0, 3],fraction=0.046, pad=0.04)
+
             axs[0,3].axis('off')
             axs[0,3].set_title('|Uncertainty Pred (mm)|')
-
-
             plt.colorbar(axs[1,0].imshow(self.QF[i,:,:],vmin=0,vmax=10), ax=axs[1, 0],fraction=0.046, pad=0.04)
+
             axs[1,0].axis('off')
             axs[1,0].set_title('True Conc (ug/mL)')
             plt.colorbar(axs[1,1].imshow(concentration_prediction_mean[i,:,:],vmin=0,vmax=10), ax=axs[1, 1],fraction=0.046, pad=0.04)
@@ -1539,21 +1636,49 @@ class DL(Utils):
 
             axs[1,2].axis('off')
             axs[1,2].set_title('|Error (ug/mL)|')
-            plt.colorbar(axs[1,3].imshow(concentration_prediction_uncertainty[i,:,:],vmin=0,vmax=1), ax=axs[1, 3],fraction=0.046, pad=0.04)
+            
+            plt.colorbar(axs[1,3].imshow(concentration_prediction_uncertainty[i,:,:],vmin=0,vmax=3), ax=axs[1, 3],fraction=0.046, pad=0.04)
+            #axs[0,2].text(5, 5, 'min_depth error = ' + str(temp_value_str_1 - temp_value_str_2), bbox={'facecolor': 'white', 'pad': 4}, size = 'x-small')
+
             axs[1,3].axis('off')
             axs[1,3].set_title('|Uncertainty Pred (mm)|')
-
             plt.tight_layout()
-            
-            plt.show()
+        
+    def plot_as_function_of_radius(self, DFP_max):
+        #plot depth pre[]diction as a function of radius (depth = 5mm)
 
-    def predict_uncertainty_with_aleatoric_uncertainty(self): 
-        self.isTesting = False
+        p = plt.figure()
+        radius = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+        plt.axhline(y = 5, color = 'r', linestyle = 'dashed') 
+
+        plt.scatter(radius, DFP_max)
+        plt.xlim([0.1, 2.1])
+        plt.ylim([0, 10])
+        plt.ylabel("Predicted Depth (mm)")
+        plt.xlabel("Radius (mm)")
+        plt.title("Prediction Depth vs Radius")
+
+        p.show()
+
+
+    def determine_cutoff(self, mean_error, threshold = 2):
+        print("mean error", mean_error)
+        mean_error = np.array(mean_error)
+        mean_error_above_threshold = mean_error[mean_error > threshold]
+        for i in mean_error_above_threshold:
+            if i == 1:
+                return i
+        
+        return None
+
+        
+    def load(self):
+
         h5_files = []
         for folder in os.listdir("ModelParameters"):
-            if not folder.endswith((".h5",".log",".xml")):
+            if not folder.endswith((".h5",".log",".xml", ".keras")):
                 for file in os.listdir("ModelParameters//"+folder):
-                    if file.endswith(".h5") or file.endswith(".keras"):
+                    if file.endswith(".keras") or file.endswith(".h5"):
                         filename = "ModelParameters//"+folder+'//'+file
                         h5_files.append(filename)
                         print(filename)        
@@ -1562,171 +1687,28 @@ class DL(Utils):
             if loadFile == '': # User enters nothing; break
                 break
             elif loadFile in h5_files:
-                self.modelD = load_model(loadFile, compile = False) 
-                self.modelD.load_weights(loadFile)
+                #self.xml_file_name = loadFile.replace(".h5", "_params.xml")
+                #self.new_model = tf.keras.models.load_model(loadFile, compile=False)
+                #self.new_model.load_weights(loadFile)
+                self.modelD = load_model(loadFile, compile=False) 
+                #self.new_model.summary()# Load the weights into this model
                 self.importData(isTesting=True,quickTest=True)
                 break
                     
             else: # If the modelD attribute does not exist
                 print('\nModel is not currently defined - select again.') 
                 break
-
-        num_dropout_ensembles = 16
-        num_examples = self.OP.shape[0]
-        image_dim = self.OP.shape[1]
-
-        depth_prediction_ensembles = np.ndarray((num_examples, image_dim, image_dim, num_dropout_ensembles))
-        concentration_prediction_ensembles = np.ndarray((num_examples, image_dim, image_dim, num_dropout_ensembles))
-
-        depth_uncertainty_ensembles = np.ndarray((num_examples, image_dim, image_dim, num_dropout_ensembles))
-        concentration_uncertainty_ensembles = np.ndarray((num_examples, image_dim, image_dim, num_dropout_ensembles))
-
-        for i in range(num_dropout_ensembles):
-            #tmp = self.modelD.predict([self.OP, self.FL])  
-            #depth_prediction_ensembles_no_dropout[:,:,:,i] = tmp[1].squeeze()
-            #concentration_prediction_ensembles_no_dropout[:,:,:,i] = tmp[0].squeeze()
-
-            tmp = self.modelD.predict([self.OP, self.FL], batch_size = 1)  
-            #tmp shape: (2,num_test, 101, 101, 2)
-            print("tmp shape", np.shape(tmp))
-            tmp = np.array(tmp)
-            #tmp = self.modelD([self.OP, self.FL], training = True)
-            depth_prediction_ensembles[:,:,:,i] = tmp[1, :,:,:,0].squeeze()
-            concentration_prediction_ensembles[:,:,:,i] = tmp[0, :,:,:,0].squeeze()
-            depth_uncertainty_ensembles[:,:,:,i] = tmp[1, :,:,:,1].squeeze()
-            concentration_uncertainty_ensembles[:,:,:,i] = tmp[0, :,:,:,1].squeeze()
-
-        depth_prediction_mean = np.zeros((num_examples, image_dim, image_dim))
-        concentration_prediction_mean = np.zeros((num_examples, image_dim, image_dim))
-
-        depth_prediction_uncertainty_aleatoric = np.zeros((num_examples, image_dim, image_dim))
-        concentration_prediction_uncertainty_aleatoric = np.zeros((num_examples, image_dim, image_dim))
-        depth_prediction_uncertainty_epistemic = np.zeros((num_examples, image_dim, image_dim))
-        concentration_prediction_uncertainty_epistemic = np.zeros((num_examples, image_dim, image_dim))
-        #take the mean of each example 
-        for i in range(num_examples):
-            depth_prediction_mean[i, :,:] = np.mean(depth_prediction_ensembles[i,:,:,:].squeeze(), axis = 2)
-            concentration_prediction_mean[i, :,:] = np.mean(concentration_prediction_ensembles[i,:,:,:].squeeze(), axis = 2)
-            #get epistemic uncertainty 
-            depth_prediction_uncertainty_epistemic[i, :,:] = np.std(depth_prediction_ensembles[i,:,:,:].squeeze(), axis = 2) 
-            concentration_prediction_uncertainty_epistemic[i, :,:] = np.std(concentration_prediction_ensembles[i,:,:,:].squeeze(), axis = 2)
-            depth_prediction_uncertainty_aleatoric[i, :,:] = np.mean(depth_uncertainty_ensembles[i,:,:,:].squeeze(), axis = 2) 
-            concentration_prediction_uncertainty_aleatoric[i, :,:] = np.mean(concentration_uncertainty_ensembles[i,:,:,:].squeeze(), axis = 2)
-
-
-
-        DF_error = depth_prediction_mean - self.DF.squeeze()
-        QF_error = concentration_prediction_mean - self.QF.squeeze()
-        #depth_prediction_uncertainty = np.array(depth_prediction_uncertainty)
-        #plot min depth graph 
-        #error_min_depth = np.zeros((depth_prediction_uncertainty.shape[0], 1))
-        
-        #for i in range(depth_prediction_uncertainty.shape[0]):
-        #    x = (depth_prediction_uncertainty[i,:,:] == np.min(depth_prediction_uncertainty[i,:,:]))
-        #    min_index = np.where(depth_prediction_uncertainty[i,:,:] == np.min(depth_prediction_uncertainty[i,:,:]))
-        #   error_min_depth[i] = depth_prediction_uncertainty[i,min_index[0][0], min_index[1][0]]
-
-        
-
-        #self.indxIncl = np.nonzero(self.temp_DF_pre_conversion)
-        #print(self.indxIncl)
-        #print(self.indxIncl.shape)
-        #self.indxIncl = self.indxIncl.squeeze()
-        #depth_error = abs(self.DF[self.indxIncl] - depth_prediction_mean[self.indxIncl])
-        '''
-        depth_graph = plt.figure()
-
-        DF_min = self.get_min(self.DF)
-        DF_P_min = self.get_min(depth_prediction_mean)
-        print(error_min_depth)
-        print(DF_min)
-        print(DF_P_min)
-        #plt.scatter(depth_error,depth_prediction_uncertainty[self.indxIncl],s=1)
-        #plt.scatter(DF_min,DF_P_min,s=1)
-        plt.errorbar(DF_min, DF_P_min, yerr=error_min_depth.squeeze(), fmt="o")
-        plt.xlim([0, 15])
-        plt.ylim([0, 15])
-        plt.plot(plt.xlim([0, 15]), plt.ylim([0, 15]),color='k')
-        plt.ylabel("Depth Error (mm)")
-        plt.xlabel("Predicted Depth Uncertainty (mm)")
-        plt.title("Depth Uncertainty vs Depth Error")
-        plt.tight_layout()
-        
-        depth_graph.show() 
-        '''
-        font = {'size'   : 7}
-        plt.rc('font', **font)
-        for i in range(20):
-
-            fig, axs = plt.subplots(2,5)
-            plt.set_cmap('jet')
             
-            
-            plt.colorbar(axs[0,0].imshow(self.DF[i,:,:],vmin=0,vmax=15), ax=axs[0, 0],fraction=0.046, pad=0.04)
-            axs[0,0].axis('off')
-            axs[0,0].set_title('True Depth (mm)')
-            plt.colorbar(axs[0,1].imshow(depth_prediction_mean[i,:,:],vmin=0,vmax=15), ax=axs[0, 1],fraction=0.046, pad=0.04)
-            axs[0,1].axis('off')
-            axs[0,1].set_title('Predicted Depth (mm)')
-            plt.colorbar(axs[0,2].imshow(abs(DF_error[i,:,:]),vmin=0,vmax=15), ax=axs[0, 2],fraction=0.046, pad=0.04)
-            axs[0,2].axis('off')
-            axs[0,2].set_title('|Error (mm)|')
-            plt.colorbar(axs[0,3].imshow(depth_prediction_uncertainty_aleatoric[i,:,:],vmin=0,vmax=3), ax=axs[0, 3],fraction=0.046, pad=0.04)
-            axs[0,3].axis('off')
-            axs[0,3].set_title('|Data Unc. Pred|')
-            plt.colorbar(axs[0,4].imshow(depth_prediction_uncertainty_epistemic[i,:,:],vmin=0,vmax=3), ax=axs[0, 4],fraction=0.046, pad=0.04)
-            axs[0,4].axis('off')
-            axs[0,4].set_title('|Model Unc. Pred|')
-            plt.tight_layout()
-
-            plt.colorbar(axs[1,0].imshow(self.QF[i,:,:],vmin=0,vmax=10), ax=axs[1, 0],fraction=0.046, pad=0.04)
-            axs[1,0].axis('off')
-            axs[1,0].set_title('True Conc (ug/mL)')
-            plt.colorbar(axs[1,1].imshow(concentration_prediction_mean[i,:,:],vmin=0,vmax=10), ax=axs[1, 1],fraction=0.046, pad=0.04)
-            axs[1,1].axis('off')
-            axs[1,1].set_title('Predicted Conc (ug/mL)')
-            plt.colorbar(axs[1,2].imshow(abs(QF_error[i,:,:]),vmin=0,vmax=10), ax=axs[1, 2],fraction=0.046, pad=0.04)
-            #axs[0,2].text(5, 5, 'min_depth error = ' + str(temp_value_str_1 - temp_value_str_2), bbox={'facecolor': 'white', 'pad': 4}, size = 'x-small')
-
-            axs[1,2].axis('off')
-            axs[1,2].set_title('|Error (ug/mL)|')
-            plt.colorbar(axs[1,3].imshow(concentration_prediction_uncertainty_aleatoric[i,:,:],vmin=0,vmax=3), ax=axs[1, 3],fraction=0.046, pad=0.04)
-            axs[1,3].axis('off')
-            axs[1,3].set_title('|Data Unc. Pred|')
-            plt.colorbar(axs[1,4].imshow(concentration_prediction_uncertainty_epistemic[i,:,:],vmin=0,vmax=3), ax=axs[1, 4],fraction=0.046, pad=0.04)
-            axs[1,4].axis('off')
-            axs[1,4].set_title('|Model Unc. Pred|')
-
-            plt.tight_layout()
-            
-            plt.show()
-
-    def f_depth(self, DF_P):
-        depth_val = [x for x in range(1,11)] 
-
-
-    def f_radius(self, DF, DF_P):
-        x_val = [0.5, 1, 2, 4, 6] 
-        num_depth_vals= 10; 
-        DF_min_arr = np.ndarray((len(x_val), num_depth_vals))
-
-        #for i in range(len(x_val)):
-        #    for x in range(num_depth_vals):
-        #        DF_min_arr[i,x] = 
-
-
-           
 
     def Analysis(self):
         from sklearn.metrics import accuracy_score
         from sklearn.metrics import confusion_matrix
-
         '''
         h5_files = []
         for folder in os.listdir("ModelParameters"):
-            if not folder.endswith((".h5",".log",".xml")):
+            if not folder.endswith((".h5",".log",".xml", ".keras")):
                 for file in os.listdir("ModelParameters//"+folder):
-                    if file.endswith(".h5"):
+                    if file.endswith(".keras") or file.endswith(".h5"):
                         filename = "ModelParameters//"+folder+'//'+file
                         h5_files.append(filename)
                         print(filename)        
@@ -1746,19 +1728,67 @@ class DL(Utils):
             else: # If the modelD attribute does not exist
                 print('\nModel is not currently defined - select again.') 
                 break
-                
+
+        num_example_inclusion = [5, 15, 25, 35, 45, 55, 65, 75]
         '''
+
         self.indxIncl = np.nonzero(self.temp_DF_pre_conversion)
-        self.save = 'n'
+
         #self.Predict()
-        predict = self.modelD.predict([self.OP, self.FL])  
+        predict = self.modelD.predict([self.OP, self.FL], batch_size = 1)  
+
+        # if dropout model is used
+        '''
+        num_dropout_ensembles = 16
+        num_examples = self.OP.shape[0]
+        image_dim = self.OP.shape[1]
+        
+        depth_prediction_ensembles = np.ndarray((num_examples, image_dim, image_dim, num_dropout_ensembles))
+        concentration_prediction_ensembles = np.ndarray((num_examples, image_dim, image_dim, num_dropout_ensembles))
+
+        for i in range(num_dropout_ensembles):
+            #tmp = self.modelD.predict([self.OP, self.FL])  
+            #depth_prediction_ensembles_no_dropout[:,:,:,i] = tmp[1].squeeze()
+            #concentration_prediction_ensembles_no_dropout[:,:,:,i] = tmp[0].squeeze()
+            tmp = self.modelD.predict([self.OP, self.FL])  
+            depth_prediction_ensembles[:,:,:,i] = tmp[1].squeeze()
+            concentration_prediction_ensembles[:,:,:,i] = tmp[0].squeeze()
+
+        depth_prediction_mean = np.zeros((num_examples, image_dim, image_dim))
+        concentration_prediction_mean = np.zeros((num_examples, image_dim, image_dim))
+
+        #take the mean of each example 
+        for i in range(num_examples):
+            #depth_prediction_mean[i, :,:] = np.mean(depth_prediction_ensembles[i,:,:,:].squeeze(), axis = 2)
+            #concentration_prediction_mean[i, :,:] = np.mean(concentration_prediction_ensembles[i,:,:,:].squeeze(), axis = 2)
+            depth_prediction_mean[i, :,:] = np.mean(depth_prediction_ensembles[i,:,:,:].squeeze(), axis = 2)
+            concentration_prediction_mean[i, :,:] = np.mean(concentration_prediction_ensembles[i,:,:,:].squeeze(), axis = 2)
+        '''
+
         QF_P = predict[0] 
         DF_P = predict[1]
+        #DF_P = depth_prediction_mean
+        #QF_P = concentration_prediction_mean
         QF_P /= self.params['scaleQF']
         DF_P /= self.params['scaleDF']  
-        
-        
+
+        #print(self.DF[0,:,:])
+        #print(DF_P[0,:,:])
+        #print(self.QF[0,:,:])
+        #print(QF_P[0,:,:])
+
+        self.save = 'n'
+        if self.save == 'y':
+            plot_save_path = 'Predictions//' + self.exportName + '//'
+        print("DF_P", DF_P.shape)
+
+        DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[1], DF_P.shape[2], 1))
+        QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[1], QF_P.shape[2], 1))
+
         CL_P = self.classify(DF_P)
+        print("CL_P", CL_P.shape)
+        print("Cl shape", self.CL.shape)
+        #self.CL = self.CL[0, 0:100]
         true = self.CL#np.where(self.DF > 5, 1, 0)
         true = np.concatenate(true)
         
@@ -1771,7 +1801,22 @@ class DL(Utils):
         precision = tp/(tp+fp)
         npv = tn/(tn+fn)
         F1 = 2*(precision*sensitivity)/(precision + sensitivity)
-        
+
+
+        fpr, tpr, threshold = metrics.roc_curve(true, CL_P)
+        roc_auc = metrics.auc(fpr, tpr)
+
+        plt.title('Receiver Operating Characteristic')
+        plt.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
+        plt.legend(loc = 'lower right')
+        plt.plot([0, 1], [0, 1],'r--')
+        plt.xlim([0, 1])
+        plt.ylim([0, 1])
+        plt.ylabel('True Positive Rate')
+        plt.xlabel('False Positive Rate')
+        plt.show()
+
+        print("roc_auc", roc_auc)
         num_data = np.shape(true)[0]
         print(accuracy)
         CI_accuracy = self.confidence_interval(accuracy,num_data)
@@ -1856,7 +1901,9 @@ class DL(Utils):
         print('Overall Depth SSIM: {}'.format(float('%.5g' % np.mean(DF_ssim))))
         print('Overall Concentration SSIM: {}'.format(float('%.5g' % np.mean(QF_ssim))))
         ## Plot Correlations
+        
         fig, (plt1, plt2) = plt.subplots(1, 2)
+        
         plt1.scatter(self.DF[self.indxIncl],DF_P[self.indxIncl],s=1)
         plt1.set_xlim([0, 15])
         plt1.set_ylim([0, 15])
@@ -1929,27 +1976,36 @@ class DL(Utils):
             plt.savefig(plot_save_path_concentration_SSIM, dpi=100, bbox_inches='tight')
         plt.show()
         ## Plot Min True Depth vs. Min Predicted Depth
-        min_depth_graph = plt.figure()
-        plt.scatter(DF_max,DFP_max,s=1)
+        #beg = 0
+        #end = beg + 49
 
-        
+        min_depth_graph = plt.figure()
+        #plt.scatter(DF_max[beg:end],DFP_max[beg:end],s=1)
+        plt.scatter(DF_max,DFP_max,s=3, label = "Correct Classification", color = ['blue'])
+
         DF_max_classify = np.array(DF_max) < 5 
         DFP_max_classify = np.array(DFP_max) < 5
         
         failed_result = DF_max_classify !=DFP_max_classify
         
-        plt.scatter(DF_max[failed_result],DFP_max[failed_result],s=1, color = ['red'])
-        plt.xlim([0, 15])
-        plt.ylim([0, 15])
-        plt.plot(plt.xlim([0, 15]), plt.ylim([0, 15]),color='k')
+        
+        
+        plt.scatter(DF_max[failed_result],DFP_max[failed_result],label = "Incorrect Classification", s=3, color = ['red'])
+        plt.legend(loc="upper left", prop={'size': 10})
+
+        plt.xlim([0, 10])
+        plt.ylim([0, 10])
+        plt.plot(plt.xlim([0, 10]), plt.ylim([0, 10]),color='k')
         plt.ylabel("Predicted Depth (mm)")
         plt.xlabel("True Depth (mm)")
-        plt.title("Min Depth")
+        plt.title("Minimum Depth")
         plt.tight_layout()
         if self.save in ['Y','y']:
             plot_save_path_min_depth = plot_save_path + 'min_depth.png'
             plt.savefig(plot_save_path_min_depth, dpi=100, bbox_inches='tight')
         min_depth_graph.show()
+
+        
         
         #plot depth error as a function of true depth 
         f = plt.figure()
@@ -1966,7 +2022,8 @@ class DL(Utils):
 
         #plot mindepth error as a function of true depth 
         g = plt.figure()
-
+        
+      
         min_depth_error = np.abs(DFP_max - DF_max)
         plt.scatter(DF_max,min_depth_error,s=0.2)
         plt.xlim([0, 10])
@@ -1994,22 +2051,25 @@ class DL(Utils):
         
 
         #flattened_depth_error = np.reshape(depth_error, (depth_error.shape[0] * depth_error.shape[1] * depth_error.shape[2]))
-        flattened_depth_error = depth_error 
-        flattened_actual_depth = self.DF[self.indxIncl]#np.reshape(self.DF[self.indxIncl], (self.DF.shape[0] * self.DF.shape[1] * self.DF.shape[2]))
+        #flattened_depth_error = depth_error 
+        #flattened_actual_depth = np.reshape(self.DF[self.indxIncl], (self.DF.shape[0] * self.DF.shape[1] * self.DF.shape[2]))
 
-        mean_depth_error, std_depth_error = self.calculate_bar(flattened_depth_error, flattened_actual_depth, 15)
+        #mean_depth_error, std_depth_error = self.calculate_bar(flattened_depth_error, flattened_actual_depth, 15)
+        #print(mean_depth_error)
+        #cutoff_val = self.determine_cutoff(mean_depth_error)
+        #print("cutoff_val: ", cutoff_val)
 
-        bar_val_graph_all = plt.figure(figsize=(10, 6), dpi=80)
+        #bar_val_graph_all = plt.figure(figsize=(10, 6), dpi=80)
 
-        x_str = ['0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9','9-10', '10-11', '11-12', '12-13', '13-14', '14-15']
-        x_str = np.squeeze(x_str)
+        #x_str = ['0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9','9-10', '10-11', '11-12', '12-13', '13-14', '14-15']
+        #x_str = np.squeeze(x_str)
 
-        plt.bar(x_str, mean_depth_error)
-        plt.errorbar(x_str,mean_depth_error , yerr=std_depth_error, capsize=3, fmt="r--o", ecolor = "black")
-        plt.xlabel("True Depth (mm)")
-        plt.ylabel("Absolute Depth Error (mm)")
+        #plt.bar(x_str, mean_depth_error)
+        #plt.errorbar(x_str,mean_depth_error , yerr=std_depth_error, capsize=3, fmt="r--o", ecolor = "black")
+        #plt.xlabel("True Depth (mm)")
+        #plt.ylabel("Absolute Depth Error (mm)")
         
-        bar_val_graph_all.show()
+        #bar_val_graph_all.show()
         
         #plot depth error as a function of absorption, scattering 
         #self.error_vs_absorption(DF_max, DFP_max, ua_max)
@@ -2022,14 +2082,29 @@ class DL(Utils):
         #self.concentration_error_vs_depth_error(DF_max, DFP_max, QF_max, QFP_max)
         #self.concentration_vs_depth_error_classify(DF_max, DFP_max, QF_max, failed_result)
         #self.concentration_error_vs_depth_error_classify(DF_max, DFP_max, QF_max, QFP_max, failed_result)
-        
+        #self.concentration_error_vs_depth(self.QF, QF_P, self.DF)
 
-        self.concentration_error_vs_concentration(QF_max, QFP_max, failed_result)
+        #self.concentration_error_vs_concentration(QF_max, QFP_max, failed_result)
         
-        self.max_concentration_graph(QF_max, QFP_max)
+        #self.max_concentration_graph(QF_max, QFP_max)
 
+        #self.min_depth_error_as_function_of_depth(DF_max, DFP_max)
+
+        #self.depth_error_as_function_of_depth(DF_max, DFP_max)
+        #self.depth_error_as_function_of_thickness_and_depth(DF_max, DFP_max)
+        #self.concentration_error_as_function_of_thickness_and_depth(self.DF, self.QF, QF_P)
+        #self.depth_error_as_function_of_thickness_and_depth_all(self.DF, DF_P, self.QF)
+
+        self.depth_error_as_function_of_fluorophore_thickness_and_depth(DF_max, DFP_max)
+        self.concentration_error_as_function_of_fluorophore_thickness_and_depth(DF_max, QF_max, QFP_max)
         # Plot true and predicted depth and concentration
-        num_plot_display = 10
+        num_plot_display = 60
+        
+        num_example_inclusion = [x * 19 for x in range(40)]
+
+        #self.save = 'y'
+        plot_save_path = './Predictions/'
+
         if self.DF.shape[0] < 10:
             for i in range(self.DF.shape[0]):
                 fig, axs = plt.subplots(2,3)
@@ -2060,14 +2135,50 @@ class DL(Utils):
                     plt.savefig(plot_save_path_DF, dpi=100, bbox_inches='tight')
                 plt.show()
         else:
-            for i in range(num_plot_display):
+            #for i in num_example_inclusion:#range(num_plot_display):
+            #failed_result_index = np.where(failed_result)
+            for i in range(num_plot_display):#range(num_plot_display):
+            #for i in failed_result_index[0]:
                 fig, axs = plt.subplots(2,3)
                 plt.set_cmap('jet')
-                
-                
                 plt.colorbar(axs[0,0].imshow(self.DF[i,:,:],vmin=0,vmax=15), ax=axs[0, 0],fraction=0.046, pad=0.04)
+                '''
+                value = -1
+                min_index = np.where(self.DF[i,:,:] == np.min(self.DF[i,:,:]))
+                temp_value = self.DF[i, min_index[0], min_index[1]]
+                self.DF[i, min_index[0], min_index[1]] = value 
+                
+                masked_array = np.ma.masked_where(self.DF[i,:,:] == value, self.DF[i,:,:])
+                cmap = plt.cm.jet  # Can be any colormap that you want after the cm
+                cmap.set_bad(color='white')
+                
+                #plt.colorbar(axs[0,0].imshow(self.DF[i,:,:],vmin=0,vmax=15), ax=axs[0, 0],fraction=0.046, pad=0.04)
+                plt.colorbar(axs[0,0].imshow(masked_array,vmin=0,vmax=15), ax=axs[0, 0],fraction=0.046, pad=0.04, cmap = cmap)
+
+                temp_value_str_1 = temp_value[0]
+
+                axs[0,0].text(5, 5, 'min_depth = ' + str(temp_value_str_1), bbox={'facecolor': 'white', 'pad': 4}, size = 'x-small')
+                self.DF[i, min_index[0], min_index[1]] = temp_value 
+                '''
+
                 axs[0,0].axis('off')
                 axs[0,0].set_title('True Depth (mm)')
+                '''
+                min_index = np.where(DF_P[i,:,:] == np.min(DF_P[i,:,:]))
+                
+                temp_value = DF_P[i, min_index[0], min_index[1]]
+                DF_P[i, min_index[0], min_index[1]] = value 
+                
+                masked_array = np.ma.masked_where(DF_P[i,:,:] == value, DF_P[i,:,:])
+                cmap = plt.cm.jet  # Can be any colormap that you want after the cm
+                cmap.set_bad(color='white')
+                
+                temp_value_str_2 = temp_value[0]
+                plt.colorbar(axs[0,1].imshow(masked_array,vmin=0,vmax=15), ax=axs[0, 1],fraction=0.046, pad=0.04, cmap = cmap)
+                axs[0,1].text(5, 5, 'min_depth = ' + str(temp_value_str_2), bbox={'facecolor': 'white', 'pad': 4}, size = 'x-small')
+                DF_P[i, min_index[0], min_index[1]] = temp_value 
+                '''
+                
                 plt.colorbar(axs[0,1].imshow(DF_P[i,:,:],vmin=0,vmax=15), ax=axs[0, 1],fraction=0.046, pad=0.04)
                 axs[0,1].axis('off')
                 axs[0,1].set_title('Predicted Depth (mm)')
@@ -2086,9 +2197,11 @@ class DL(Utils):
                 axs[1,2].axis('off')
                 axs[1,2].set_title('|Error (ug/mL)|')
                 plt.tight_layout()
-                if i == 0 and self.save in ['Y','y']:
-                    plot_save_path_DF = plot_save_path + 'DF.png'
+                if self.save in ['Y','y']:
+                    plot_save_path_DF = plot_save_path + 'num_'+ str(i) + '_' + 'DF_QF.png'
                     plt.savefig(plot_save_path_DF, dpi=100, bbox_inches='tight')
+                   
+
                 plt.show()
         
     def PrintFeatureMap(self):
@@ -2129,9 +2242,3 @@ class DL(Utils):
                         plt.title ( layer_name +' Filter: ' +str(i+1))
                         plt.grid  ( False )
                         plt.imshow( feature_image, aspect='auto')
-
-
-if __name__ == '__main__':
-    test = DL()
-    test.Model()
-    #test.predict_uncertainty()

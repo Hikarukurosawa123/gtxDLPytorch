@@ -580,7 +580,8 @@ class DL(Utils):
         mean_true = y_true[:, :, :, 0]
         mean_pred = y_pred[:, :, :, 0]
         scale_pred = y_pred[:, :, :, 1]
-        loss = tf.abs(tf.math.divide(tf.math.abs(mean_true - mean_pred), scale_pred + 1e-2) + tf.math.log(scale_pred + 1e-2))
+        #loss = tf.abs(tf.math.divide(tf.math.abs(mean_true - mean_pred), scale_pred + 1e-2) + tf.math.log(scale_pred + 1e-2))
+        loss = tf.reduce_mean( tf.exp(scale_pred) *tf.square( (mean_pred-mean_true) ) ) + tf.reduce_mean(scale_pred)
 
         return loss
 

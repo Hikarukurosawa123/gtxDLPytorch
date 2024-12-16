@@ -35,7 +35,7 @@ from matplotlib.colors import LightSource
 class DL(Utils):    
     # Initialization method runs whenever an instance of the class is initiated
     def __init__(self):
-        self.bucket = '20240912-hikaru-iceberg'
+        self.bucket = '20240920-matthew'
         print('Choose a Default Parameters Case: \n 20221216_Case3AWS\n 20221216_Case3AWS_One3DConv\n 20230517_OPAscale\n 20230726_4SF\n 20230905_ScaledF\n 20230912_4SF_logF\n')
         self.case = input('Select a case from listed directories: ')
         self.params = self.Defaults(self.case) # Define some default parameters based on the selected case
@@ -1234,7 +1234,7 @@ class DL(Utils):
         self.concentration_error_vs_depth(self.QF, QF_P, self.DF)
 
 
-        num_plot_display = 10
+        num_plot_display = 50
         if self.DF.shape[0] < 10:
             for i in range(self.DF.shape[0]):
                 fig, axs = plt.subplots(2,3)
