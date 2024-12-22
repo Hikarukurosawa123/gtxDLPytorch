@@ -1507,7 +1507,7 @@ class DL(Utils):
         print("indxIncl shape", np.shape(self.indxIncl))
         print(self.indxIncl)
         #self.Predict()
-        predict = self.modelD.predict([self.OP, self.FL])  
+        predict = self.modelD.predict([self.RE, self.FL])  
 
         # if dropout model is used
         '''
@@ -1851,7 +1851,7 @@ class DL(Utils):
 
         self.depth_error_as_function_of_depth(DF_max, DFP_max)
         # Plot true and predicted depth and concentration
-        num_plot_display = 10
+        num_plot_display = 20
         
         num_example_inclusion = [x * 19 for x in range(40)]
 
@@ -1885,7 +1885,7 @@ class DL(Utils):
                     plt.savefig(plot_save_path_DF, dpi=100, bbox_inches='tight')
                 plt.show()
         else:
-            for i in num_example_inclusion:#range(num_plot_display):
+            for i in range(num_plot_display):
             #failed_result_index = np.where(failed_result)
 
             #for i in failed_result_index[0]:

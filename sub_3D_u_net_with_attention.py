@@ -18,7 +18,7 @@ from skimage.metrics import structural_similarity as ssim
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model, load_model
-from keras.layers import BatchNormalization, Input, concatenate, Conv2D, add, Conv3D, Reshape, SeparableConv2D, Dropout, MaxPool2D, UpSampling2D, ZeroPadding2D
+from keras.layers import BatchNormalization, Input, concatenate, Conv2D, add, Conv3D, Reshape, SeparableConv2D, Dropout, MaxPool2D, UpSampling2D, ZeroPadding2D, MaxPool3D, Activation
 from keras.callbacks import History, EarlyStopping, ModelCheckpoint, CSVLogger, TensorBoard, LearningRateScheduler, ReduceLROnPlateau
 from keras.preprocessing import image
 
@@ -447,91 +447,150 @@ class DL(Utils):
             x = Dropout(drop_out)(x, training = True)
     
         return x 
+    def attention_gate(self, g, s, num_filters):
+        print("g in shape: ", g.shape)
+        Wg = Conv2D(num_filters, 1, strides = (2,2), padding="valid")(g)
+        print("Wg shape: ", Wg.shape)
+        #Wg = BatchNormalization()(Wg)
+        print("s in shape: ", s.shape)
 
+        Ws = Conv2D(num_filters, 1, padding="same")(s)
+        #Ws = BatchNormalization()(Ws)
+        print("Ws shape: ", Ws.shape)
+
+        out = Activation("relu")(Wg + Ws)
+        out = Conv2D(1, 1, padding="same")(out)
+        out = Activation("sigmoid")(out)
+        out = UpSampling2D()(out)
+        print("out shape: ", out.shape)
+        print("g shape: ", g.shape)
+
+        return out * g
     
     def Model(self):
         """The deep learning architecture gets defined here"""
-        if self.isTesting: 
-            drop_out = 0.5
-        else: 
-            drop_out = None
-
+        
+        ## Input Optical Properties ##
+        inOP_beg = Input(shape=(self.params['xX'],self.params['yY'],self.params['nF']))
         ## Input Multi-Dimensional Fluorescence ##
         inFL_beg = Input(shape=(self.params['xX'],self.params['yY'],self.params['nF']))
 
+        ## NOTE: Batch normalization can cause instability in the validation loss
+
+        ## Optical Properties Branch ##
+        inOP = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+                      padding='same', activation=self.params['activation'], data_format="channels_last")(inOP_beg)
+
+        inOP = Conv2D(filters=int(self.params['nFilters2D']/2), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+                      padding='same', activation=self.params['activation'], data_format="channels_last")(inOP)
+                
         ## Fluorescence Input Branch ##
         input_shape = inFL_beg.shape
-        inFL = Conv2D(filters=self.params['nFilters2D'], kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+        inFL = Conv2D(filters=self.params['nFilters3D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], input_shape=input_shape[1:], data_format="channels_last")(inFL_beg)
         
 
-        inFL = Conv2D(filters=int(self.params['nFilters2D']), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+        inFL = Conv2D(filters=int(self.params['nFilters2D']/2), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inFL)
-        print("inFL1: ", inFL.shape)
 
         ## Concatenate Branch ##
+        concat = concatenate([inOP,inFL],axis=-1)
 
-        Max_Pool_1 = MaxPool2D()(inFL)
-        print("Maxpool1: ", Max_Pool_1.shape)
+        Max_Pool_1 = MaxPool2D()(concat)
 
-        Conv_1 = Conv2D(filters=256, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
+        Max_Pool_1 = Reshape((Max_Pool_1.shape[1], Max_Pool_1.shape[2], 1, Max_Pool_1.shape[3]))(Max_Pool_1)
+        print("Max_Pool_1: ", Max_Pool_1.shape)
+
+        Conv_1 = Conv3D(filters=256, kernel_size=self.params['kernelConv3D'], strides=self.params['strideConv3D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Max_Pool_1)
-        Conv_1 = Conv2D(filters=256, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       activation=self.params['activation'], data_format="channels_last")(Conv_1)
         
-        Max_Pool_2 = MaxPool2D()(Conv_1)
-        print("Max_Pool_2: ", Max_Pool_2.shape)
+        print("Conv_1: ", Conv_1.shape)
 
-        Conv_2 = Conv2D(filters=512, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
+        Conv_1 = Conv3D(filters=256, kernel_size=self.params['kernelConv3D'], strides=self.params['strideConv3D'], padding='same', 
+                       activation=self.params['activation'], data_format="channels_last")(Conv_1)
+        Conv_1 = Reshape((Conv_1.shape[1], Conv_1.shape[2], Conv_1.shape[4]))(Conv_1)
+
+        Max_Pool_2 = MaxPool2D()(Conv_1)
+        Max_Pool_2 = Reshape((Max_Pool_2.shape[1], Max_Pool_2.shape[2], 1, Max_Pool_2.shape[3]))(Max_Pool_2)
+
+        Conv_2 = Conv3D(filters=512, kernel_size=self.params['kernelConv3D'], strides=self.params['strideConv3D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Max_Pool_2)
-        Conv_2 = Conv2D(filters=512, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
+        Conv_2 = Conv3D(filters=512, kernel_size=self.params['kernelConv3D'], strides=self.params['strideConv3D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Conv_2)
+        
+        Conv_2 = Reshape((Conv_2.shape[1], Conv_2.shape[2], Conv_2.shape[4]))(Conv_2)
 
         Max_Pool_3 = MaxPool2D()(Conv_2)
+        Max_Pool_3 = Reshape((Max_Pool_3.shape[1], Max_Pool_3.shape[2], 1, Max_Pool_3.shape[3]))(Max_Pool_3)
+
         print("Max_Pool_3: ", Max_Pool_3.shape)
 
-        Conv_3 = Conv2D(filters=1024, kernel_size=(self.params['kernelConv2D']), strides=self.params['strideConv2D'], padding='same', 
+        Conv_3 = Conv3D(filters=1024, kernel_size=(self.params['kernelConv3D']), strides=self.params['strideConv3D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Max_Pool_3)
-        Conv_3 = Conv2D(filters=1024, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
+        Conv_3 = Conv3D(filters=1024, kernel_size=self.params['kernelConv3D'], strides=self.params['strideConv3D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Conv_3)
+        print("Conv_3: ", Conv_3.shape)
+        Conv_3 = Reshape((Conv_3.shape[1], Conv_3.shape[2], Conv_3.shape[4]))(Conv_3)
         
+        x = Conv_2[:,0:Conv_2.shape[1] - 1, 0:Conv_2.shape[2] - 1, :]
+        s = self.attention_gate(x, Conv_3, 512)
+
+        print("x shape", x.shape)
+
+        print("s shape", s.shape)
         #decoder 
         Up_conv_1 = UpSampling2D()(Conv_3)
+
+        #Up_conv_1 = Reshape((Up_conv_1.shape[1], Up_conv_1.shape[2], Up_conv_1.shape[4]))(Up_conv_1)
+
         Up_conv_1 = Conv2D(filters=512, kernel_size = (2,2), strides=(1,1), padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Up_conv_1)
+         #g is coming from encoder path, s is coming from decoder path 
 
-        concat_1 = concatenate([Conv_2[:,0:Conv_2.shape[1] - 1, 0:Conv_2.shape[2] - 1, :],Up_conv_1],axis=-1)
+       
+
+        concat_1 = concatenate([Up_conv_1,s],axis=-1)
 
         Conv_4 = Conv2D(filters=512, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(concat_1)
  
         Conv_4 = Conv2D(filters=512, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                             activation=self.params['activation'], data_format="channels_last")(Conv_4)
-        
+        x = Conv_1
+        Conv_4_zero_pad = ZeroPadding2D(padding = ((1,0), (1,0)))(Conv_4)
+        s = self.attention_gate(x, Conv_4_zero_pad, 256)
+
         Up_conv_2 = UpSampling2D()(Conv_4)
 
         Up_conv_2 = Conv2D(filters=256, kernel_size = (2,2), strides=(1,1), padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Up_conv_2)
-        print("Up_conv_2: ", Up_conv_2.shape)
-        print("Conv_1: ", Conv_1.shape)
+    
 
         Up_conv_2 = ZeroPadding2D()(Up_conv_2)
 
-        concat_2 = concatenate([Conv_1,Up_conv_2],axis=-1)
+        
+
+        concat_2 = concatenate([Up_conv_2,s],axis=-1)
 
         Conv_5 = Conv2D(filters=256, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(concat_2)
         Conv_5 = Conv2D(filters=256, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Conv_5)
-        
+        x = ZeroPadding2D(padding = ((1,0), (1,0)))(concat)
+        Conv_5_zero_pad = ZeroPadding2D(padding = ((1,0), (1,0)))(Conv_5)
+
+        s = self.attention_gate(x, Conv_5_zero_pad, 128)
+
         Up_conv_3 = UpSampling2D()(Conv_5)
         Up_conv_3 = Conv2D(filters=128, kernel_size = (2,2), strides=(1,1), padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Up_conv_3)
         
                        
         Up_conv_3 = ZeroPadding2D(padding = ((1,0), (1,0)))(Up_conv_3)
-       
-        concat_2 = concatenate([inFL,Up_conv_3],axis=-1)
+
+        s = s[:,0:s.shape[1] - 1, 0:s.shape[2] - 1, :]
+        concat_2 = concatenate([Up_conv_3,s],axis=-1)        
+
         Conv_6 = Conv2D(filters=128, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(concat_2)
 
@@ -545,7 +604,7 @@ class DL(Utils):
         #outQF = BatchNormalization()(outQF)
         
         outQF = Conv2D(filters=1, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       data_format="channels_last")(outQF)
+                        data_format="channels_last")(outQF)
 
         ## Depth Fluorescence Output Branch ##
         #first DF layer 
@@ -562,7 +621,7 @@ class DL(Utils):
                        data_format="channels_last")(outDF)
 
         ## Defining and compiling the model ##
-        self.modelD = Model(inputs=[inFL_beg], outputs=[outQF, outDF])#,outFL])
+        self.modelD = Model(inputs=[inOP_beg,inFL_beg], outputs=[outQF, outDF])#,outFL])
         self.modelD.compile(loss=['mae', 'mae'],
                       optimizer=getattr(keras.optimizers,self.params['optimizer'])(learning_rate=self.params['learningRate']),
                       metrics=['mae', 'mae'])
@@ -625,7 +684,7 @@ class DL(Utils):
                                        epochs=50, verbose=1, shuffle=True, callbacks=callbackList)     
         else:
 
-            self.history = self.modelD.fit([self.FL/self.RE], [self.QF, self.DF],validation_split=0.2,batch_size=self.params['batch'],
+            self.history = self.modelD.fit([self.RE, self.FL], [self.QF, self.DF],validation_split=0.2,batch_size=self.params['batch'],
                                        epochs=self.params['epochs'], verbose=1, shuffle=True, callbacks=callbackList)    
         
         if hasattr(self,'exportPath'):
@@ -1485,7 +1544,7 @@ class DL(Utils):
         print("indxIncl shape", np.shape(self.indxIncl))
         print(self.indxIncl)
         #self.Predict()
-        predict = self.modelD.predict([self.FL/self.RE], batch_size = 1)  
+        predict = self.modelD.predict([self.OP, self.FL])  
 
         # if dropout model is used
         '''
@@ -1863,7 +1922,7 @@ class DL(Utils):
                     plt.savefig(plot_save_path_DF, dpi=100, bbox_inches='tight')
                 plt.show()
         else:
-            for i in range(num_plot_display):
+            for i in num_example_inclusion:#range(num_plot_display):
             #failed_result_index = np.where(failed_result)
 
             #for i in failed_result_index[0]:
@@ -1968,3 +2027,8 @@ class DL(Utils):
                         plt.title ( layer_name +' Filter: ' +str(i+1))
                         plt.grid  ( False )
                         plt.imshow( feature_image, aspect='auto')
+
+
+if __name__ == '__main__':
+    test = DL()
+    test.Model()

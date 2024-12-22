@@ -18,7 +18,7 @@ from skimage.metrics import structural_similarity as ssim
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model, load_model
-from keras.layers import BatchNormalization, Input, concatenate, Conv2D, add, Conv3D, Reshape, SeparableConv2D, Dropout, MaxPool2D, UpSampling2D, ZeroPadding2D
+from keras.layers import BatchNormalization, Input, concatenate, Conv2D, add, Conv3D, Reshape, SeparableConv2D, Dropout, MaxPool2D, UpSampling2D, ZeroPadding2D, Activation
 from keras.callbacks import History, EarlyStopping, ModelCheckpoint, CSVLogger, TensorBoard, LearningRateScheduler, ReduceLROnPlateau
 from keras.preprocessing import image
 
@@ -448,30 +448,61 @@ class DL(Utils):
     
         return x 
 
-    
+    def attention_gate(self, g, s, num_filters):
+        print("g in shape: ", g.shape)
+        Wg = Conv2D(num_filters, 1, strides = (2,2), padding="valid")(g)
+        print("Wg shape: ", Wg.shape)
+        #Wg = BatchNormalization()(Wg)
+        print("s in shape: ", s.shape)
+
+        Ws = Conv2D(num_filters, 1, padding="same")(s)
+        #Ws = BatchNormalization()(Ws)
+        print("Ws shape: ", Ws.shape)
+
+        out = Activation("relu")(Wg + Ws)
+        out = Conv2D(1, 1, padding="same")(out)
+        out = Activation("sigmoid")(out)
+        out = UpSampling2D()(out)
+        print("out shape: ", out.shape)
+        print("g shape: ", g.shape)
+
+        return out * g
+
     def Model(self):
         """The deep learning architecture gets defined here"""
-        if self.isTesting: 
-            drop_out = 0.5
-        else: 
-            drop_out = None
+      
 
+        ## Input Optical Properties ##
+        inOP_beg = Input(shape=(self.params['xX'],self.params['yY'],self.params['nF']))
         ## Input Multi-Dimensional Fluorescence ##
         inFL_beg = Input(shape=(self.params['xX'],self.params['yY'],self.params['nF']))
 
+        ## NOTE: Batch normalization can cause instability in the validation loss
+
+        ## Optical Properties Branch ##
+        inOP = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+                      padding='same', activation=self.params['activation'], data_format="channels_last")(inOP_beg)
+
+        inOP = Conv2D(filters=int(self.params['nFilters2D']/2), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+                      padding='same', activation=self.params['activation'], data_format="channels_last")(inOP)
+        
+        print("inOP1: ", inOP.shape)
+        
         ## Fluorescence Input Branch ##
         input_shape = inFL_beg.shape
-        inFL = Conv2D(filters=self.params['nFilters2D'], kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+        inFL = Conv2D(filters=self.params['nFilters2D']//2, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], input_shape=input_shape[1:], data_format="channels_last")(inFL_beg)
         
 
-        inFL = Conv2D(filters=int(self.params['nFilters2D']), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
+        inFL = Conv2D(filters=int(self.params['nFilters2D']/2), kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], 
                       padding='same', activation=self.params['activation'], data_format="channels_last")(inFL)
         print("inFL1: ", inFL.shape)
 
         ## Concatenate Branch ##
+        concat = concatenate([inOP,inFL],axis=-1)
+        print("concat: ", concat.shape)
 
-        Max_Pool_1 = MaxPool2D()(inFL)
+        Max_Pool_1 = MaxPool2D()(concat)
         print("Maxpool1: ", Max_Pool_1.shape)
 
         Conv_1 = Conv2D(filters=256, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
@@ -486,6 +517,7 @@ class DL(Utils):
                        activation=self.params['activation'], data_format="channels_last")(Max_Pool_2)
         Conv_2 = Conv2D(filters=512, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Conv_2)
+        print("Conv_2: ", Conv_2.shape)
 
         Max_Pool_3 = MaxPool2D()(Conv_2)
         print("Max_Pool_3: ", Max_Pool_3.shape)
@@ -494,44 +526,64 @@ class DL(Utils):
                        activation=self.params['activation'], data_format="channels_last")(Max_Pool_3)
         Conv_3 = Conv2D(filters=1024, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Conv_3)
-        
+        print("Conv_3: ", Conv_3.shape)
+
         #decoder 
+
+        x = Conv_2[:,0:Conv_2.shape[1] - 1, 0:Conv_2.shape[2] - 1, :]
+        s = self.attention_gate(x, Conv_3, 512)
+
+        print("x shape", x.shape)
+
+        print("s shape", s.shape)
         Up_conv_1 = UpSampling2D()(Conv_3)
         Up_conv_1 = Conv2D(filters=512, kernel_size = (2,2), strides=(1,1), padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Up_conv_1)
 
-        concat_1 = concatenate([Conv_2[:,0:Conv_2.shape[1] - 1, 0:Conv_2.shape[2] - 1, :],Up_conv_1],axis=-1)
+        #attention block 
+        concat_1 = concatenate([Up_conv_1,s],axis=-1)
 
         Conv_4 = Conv2D(filters=512, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(concat_1)
  
         Conv_4 = Conv2D(filters=512, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                             activation=self.params['activation'], data_format="channels_last")(Conv_4)
-        
+        x = Conv_1
+        Conv_4_zero_pad = ZeroPadding2D(padding = ((1,0), (1,0)))(Conv_4)
+        s = self.attention_gate(x, Conv_4_zero_pad, 256)
+
         Up_conv_2 = UpSampling2D()(Conv_4)
 
         Up_conv_2 = Conv2D(filters=256, kernel_size = (2,2), strides=(1,1), padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Up_conv_2)
-        print("Up_conv_2: ", Up_conv_2.shape)
-        print("Conv_1: ", Conv_1.shape)
+        
 
         Up_conv_2 = ZeroPadding2D()(Up_conv_2)
 
-        concat_2 = concatenate([Conv_1,Up_conv_2],axis=-1)
+        #s = self.attention_gate(Up_conv_2, x, 256)
+
+        concat_2 = concatenate([Up_conv_2,s],axis=-1)
 
         Conv_5 = Conv2D(filters=256, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(concat_2)
         Conv_5 = Conv2D(filters=256, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Conv_5)
-        
+        x = ZeroPadding2D(padding = ((1,0), (1,0)))(concat)
+        Conv_5_zero_pad = ZeroPadding2D(padding = ((1,0), (1,0)))(Conv_5)
+
+        s = self.attention_gate(x, Conv_5_zero_pad, 128)
+
         Up_conv_3 = UpSampling2D()(Conv_5)
         Up_conv_3 = Conv2D(filters=128, kernel_size = (2,2), strides=(1,1), padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(Up_conv_3)
         
                        
         Up_conv_3 = ZeroPadding2D(padding = ((1,0), (1,0)))(Up_conv_3)
-       
-        concat_2 = concatenate([inFL,Up_conv_3],axis=-1)
+
+        print("Up_conv shape", Up_conv_3.shape)
+        print("s shape", s.shape)
+        s = s[:,0:s.shape[1] - 1, 0:s.shape[2] - 1, :]
+        concat_2 = concatenate([Up_conv_3,s],axis=-1)
         Conv_6 = Conv2D(filters=128, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(concat_2)
 
@@ -541,7 +593,7 @@ class DL(Utils):
 
         outQF = Conv2D(filters=32, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(outQF) #outQF
-        
+
         #outQF = BatchNormalization()(outQF)
         
         outQF = Conv2D(filters=1, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
@@ -554,15 +606,14 @@ class DL(Utils):
   
         outDF = Conv2D(filters=32, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                        activation=self.params['activation'], data_format="channels_last")(outDF)
-       
         #outDF = BatchNormalization()(outDF)
      
         
         outDF = Conv2D(filters=1, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
-                       data_format="channels_last")(outDF)
+                     data_format="channels_last")(outDF)
 
         ## Defining and compiling the model ##
-        self.modelD = Model(inputs=[inFL_beg], outputs=[outQF, outDF])#,outFL])
+        self.modelD = Model(inputs=[inOP_beg,inFL_beg], outputs=[outQF, outDF])#,outFL])
         self.modelD.compile(loss=['mae', 'mae'],
                       optimizer=getattr(keras.optimizers,self.params['optimizer'])(learning_rate=self.params['learningRate']),
                       metrics=['mae', 'mae'])
@@ -625,7 +676,7 @@ class DL(Utils):
                                        epochs=50, verbose=1, shuffle=True, callbacks=callbackList)     
         else:
 
-            self.history = self.modelD.fit([self.FL/self.RE], [self.QF, self.DF],validation_split=0.2,batch_size=self.params['batch'],
+            self.history = self.modelD.fit([self.RE, self.FL], [self.QF, self.DF],validation_split=0.2,batch_size=self.params['batch'],
                                        epochs=self.params['epochs'], verbose=1, shuffle=True, callbacks=callbackList)    
         
         if hasattr(self,'exportPath'):
@@ -1485,7 +1536,7 @@ class DL(Utils):
         print("indxIncl shape", np.shape(self.indxIncl))
         print(self.indxIncl)
         #self.Predict()
-        predict = self.modelD.predict([self.FL/self.RE], batch_size = 1)  
+        predict = self.modelD.predict([self.RE, self.FL])  
 
         # if dropout model is used
         '''
@@ -1870,43 +1921,10 @@ class DL(Utils):
                 fig, axs = plt.subplots(2,3)
                 plt.set_cmap('jet')
                 plt.colorbar(axs[0,0].imshow(self.DF[i,:,:],vmin=0,vmax=15), ax=axs[0, 0],fraction=0.046, pad=0.04)
-                '''
-                value = -1
-                min_index = np.where(self.DF[i,:,:] == np.min(self.DF[i,:,:]))
-                temp_value = self.DF[i, min_index[0], min_index[1]]
-                self.DF[i, min_index[0], min_index[1]] = value 
-                
-                masked_array = np.ma.masked_where(self.DF[i,:,:] == value, self.DF[i,:,:])
-                cmap = plt.cm.jet  # Can be any colormap that you want after the cm
-                cmap.set_bad(color='white')
-                
-                #plt.colorbar(axs[0,0].imshow(self.DF[i,:,:],vmin=0,vmax=15), ax=axs[0, 0],fraction=0.046, pad=0.04)
-                plt.colorbar(axs[0,0].imshow(masked_array,vmin=0,vmax=15), ax=axs[0, 0],fraction=0.046, pad=0.04, cmap = cmap)
-
-                temp_value_str_1 = temp_value[0]
-
-                axs[0,0].text(5, 5, 'min_depth = ' + str(temp_value_str_1), bbox={'facecolor': 'white', 'pad': 4}, size = 'x-small')
-                self.DF[i, min_index[0], min_index[1]] = temp_value 
-                '''
 
                 axs[0,0].axis('off')
                 axs[0,0].set_title('True Depth (mm)')
-                '''
-                min_index = np.where(DF_P[i,:,:] == np.min(DF_P[i,:,:]))
-                
-                temp_value = DF_P[i, min_index[0], min_index[1]]
-                DF_P[i, min_index[0], min_index[1]] = value 
-                
-                masked_array = np.ma.masked_where(DF_P[i,:,:] == value, DF_P[i,:,:])
-                cmap = plt.cm.jet  # Can be any colormap that you want after the cm
-                cmap.set_bad(color='white')
-                
-                temp_value_str_2 = temp_value[0]
-                plt.colorbar(axs[0,1].imshow(masked_array,vmin=0,vmax=15), ax=axs[0, 1],fraction=0.046, pad=0.04, cmap = cmap)
-                axs[0,1].text(5, 5, 'min_depth = ' + str(temp_value_str_2), bbox={'facecolor': 'white', 'pad': 4}, size = 'x-small')
-                DF_P[i, min_index[0], min_index[1]] = temp_value 
-                '''
-                
+            
                 plt.colorbar(axs[0,1].imshow(DF_P[i,:,:],vmin=0,vmax=15), ax=axs[0, 1],fraction=0.046, pad=0.04)
                 axs[0,1].axis('off')
                 axs[0,1].set_title('Predicted Depth (mm)')
@@ -1968,3 +1986,7 @@ class DL(Utils):
                         plt.title ( layer_name +' Filter: ' +str(i+1))
                         plt.grid  ( False )
                         plt.imshow( feature_image, aspect='auto')
+
+if __name__ == '__main__':
+    test = DL()
+    test.Model()
