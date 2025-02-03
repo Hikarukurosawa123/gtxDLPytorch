@@ -1958,7 +1958,8 @@ class DL(Utils):
 
         min_depth_graph = plt.figure()
         #plt.scatter(DF_max[beg:end],DFP_max[beg:end],s=1)
-        plt.scatter(DF_max,DFP_max,s=3, label = "Correct Classification", color = ['blue'])
+        #plt.scatter(DF_max,DFP_max,s=3, label = "Correct Classification", color = ['blue'])
+        plt.scatter(DF_max,DFP_max,s=3, label =  "Correct Classification", color = ['blue'])
 
         DF_max_classify = np.array(DF_max) < 5 
         DFP_max_classify = np.array(DFP_max) < 5
@@ -1968,7 +1969,7 @@ class DL(Utils):
         
         
         plt.scatter(DF_max[failed_result],DFP_max[failed_result],label = "Incorrect Classification", s=3, color = ['red'])
-        plt.legend(loc="upper left", prop={'size': 10})
+        plt.legend(loc="upper left", prop={'size': 13, 'weight':'bold'})
 
         plt.xlim([0, 10])
         plt.ylim([0, 10])
@@ -1977,6 +1978,10 @@ class DL(Utils):
         plt.xlabel("True Depth (mm)")
         plt.title("Minimum Depth")
         plt.tight_layout()
+        font = {'weight': 'bold', 'size':18}
+        matplotlib.rc('font', **font)
+
+        
         if self.save in ['Y','y']:
             plot_save_path_min_depth = plot_save_path + 'min_depth.png'
             plt.savefig(plot_save_path_min_depth, dpi=100, bbox_inches='tight')
