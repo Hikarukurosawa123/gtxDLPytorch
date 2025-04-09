@@ -140,5 +140,4 @@ class Utils():
             params['kernelConv2D'] = (3,3)
             params['strideConv2D'] = (1,1)
             params['kernelResBlock2D'] = (3,3)
-        
         return params
