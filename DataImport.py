@@ -228,31 +228,6 @@ class Operations():
         
             start = time.perf_counter()
             
-                        
-        
-#
-            #numSets = 100
-            #self.FL = np.reshape(self.FL[indxFx,:,:,0:numSets],(len(indxFx),self.params['xX'],self.params['yY'],numSets,1))
-            
-            #self.RE = np.reshape(self.RE[indxFx,:,:,0:numSets],(len(indxFx),self.params['xX'],self.params['yY'],numSets,1))
-
-            #self.OP = self.OP[:,:,:,0:numSets]
-            #self.DF = self.DF[:,:,0:numSets]
-            #self.DF = np.reshape(self.DF,(self.params['xX'],self.params['yY'],numSets,1))
-            #self.temp_DF_pre_conversion = self.temp_DF_pre_conversion[:,:,0:numSets]
-            #self.temp_DF_pre_conversion = np.reshape(self.temp_DF_pre_conversion,(self.params['xX'],self.params['yY'],numSets,1))
-            #self.QF = self.QF[:,:,0:numSets]
-            #self.QF = np.reshape(self.QF,(self.params['xX'],self.params['yY'],numSets,1))
-
-            # Reorder data
-            #self.RE = np.swapaxes(self.RE,0,3)
-
-            #self.FL = np.swapaxes(self.FL,0,3)
-            #self.OP = np.swapaxes(self.OP,0,3)
-            #self.DF = np.moveaxis(self.DF,2,0)
-            #self.temp_DF_pre_conversion = np.moveaxis(self.temp_DF_pre_conversion,2,0)
-            #self.QF = np.moveaxis(self.QF,2,0)
-            
             stop = time.perf_counter()
             print('Load time = ' + str(stop-start))
             
@@ -426,8 +401,18 @@ class Operations():
         lrDecay = ReduceLROnPlateau(monitor='val_loss', factor=0.4, patience=5, verbose=1, min_delta=5e-5)
         earlyStopping = EarlyStopping(monitor='val_loss', min_delta=5e-5, patience=20, verbose=1, mode='auto')
         callbackList = [earlyStopping,lrDecay]
-        
-        
+
+        run_torch = 1
+
+        if run_torch:
+            #run training using torch 
+
+            #define the model 
+            
+
+
+            return 
+    
         if len(self.exportName) > 0:
             os.makedirs("ModelParameters/"+self.exportName)
             self.exportPath = 'ModelParameters/'+self.exportName+'/'+self.case

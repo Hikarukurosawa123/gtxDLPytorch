@@ -18,7 +18,7 @@ from skimage.metrics import structural_similarity as ssim
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model, load_model
-from keras.layers import BatchNormalization, Input, concatenate, Conv2D, add, Conv3D, Reshape, SeparableConv2D, Dropout, Activation, 
+from keras.layers import BatchNormalization, Input, concatenate, Conv2D, add, Conv3D, Reshape, SeparableConv2D, Dropout, Activation
 from keras.callbacks import History, EarlyStopping, ModelCheckpoint, CSVLogger, TensorBoard, LearningRateScheduler, ReduceLROnPlateau
 from keras.preprocessing import image
 

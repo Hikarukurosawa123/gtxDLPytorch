@@ -46,12 +46,10 @@ class ModelInit():
                 ## Fluorescence Input Branch ##
                 #inFL = Reshape((inFL_beg.shape[1], inFL_beg.shape[2], 1,inFL_beg.shape[3]))(inFL_beg)
                 input_shape = inFL_beg.shape
-                print(input_shape)
 
                 inFL = Conv3D(filters=self.params['nFilters3D']//2, kernel_size=self.params['kernelConv3D'], strides=self.params['strideConv3D'], 
                         padding='same', activation=self.params['activation'], input_shape=input_shape[1:], data_format="channels_last")(inFL_beg)
                 inFL = Dropout(0.5)(inFL)
-                print(inFL.shape)
 
                 inFL = Conv3D(filters=int(self.params['nFilters3D']/2), kernel_size=self.params['kernelConv3D'], strides=self.params['strideConv3D'], 
                         padding='same', activation=self.params['activation'], data_format="channels_last")(inFL)
@@ -78,7 +76,6 @@ class ModelInit():
                         activation=self.params['activation'], data_format="channels_last")(Max_Pool_2)
                 Conv_2 = Conv2D(filters=512, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                         activation=self.params['activation'], data_format="channels_last")(Conv_2)
-                print("Conv_2: ", Conv_2.shape)
 
                 Max_Pool_3 = MaxPool2D()(Conv_2)
 
@@ -87,16 +84,13 @@ class ModelInit():
                         activation=self.params['activation'], data_format="channels_last")(Max_Pool_3)
                 Conv_3 = Conv2D(filters=1024, kernel_size=self.params['kernelConv2D'], strides=self.params['strideConv2D'], padding='same', 
                         activation=self.params['activation'], data_format="channels_last")(Conv_3)
-                print("Conv_3: ", Conv_3.shape)
 
                 #decoder 
 
                 x = Conv_2[:,0:Conv_2.shape[1] - 1, 0:Conv_2.shape[2] - 1, :]
                 s = self.attention_gate(x, Conv_3, 512)
 
-                print("x shape", x.shape)
 
-                print("s shape", s.shape)
                 Up_conv_1 = UpSampling2D()(Conv_3)
 
 
@@ -140,8 +134,6 @@ class ModelInit():
                                 
                 Up_conv_3 = ZeroPadding2D(padding = ((1,0), (1,0)))(Up_conv_3)
 
-                print("Up_conv shape", Up_conv_3.shape)
-                print("s shape", s.shape)
                 s = s[:,0:s.shape[1] - 1, 0:s.shape[2] - 1, :]
                 concat_2 = concatenate([Up_conv_3,s],axis=-1)  
 

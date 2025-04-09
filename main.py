@@ -3,7 +3,9 @@ from gtxDLClassAWSUtils import Utils
 from HelperFunc import Helper
 from ModelArchitecture import ModelInit
 from DataImport import Operations
-class DL(Utils, Helper, ModelInit, Operations):    
+from siamese_pytorch import TinyModel
+
+class DL(Utils, Helper, ModelInit, Operations, TinyModel):    
     # Initialization method runs whenever an instance of the class is initiated
     def __init__(self):
         super().__init__()

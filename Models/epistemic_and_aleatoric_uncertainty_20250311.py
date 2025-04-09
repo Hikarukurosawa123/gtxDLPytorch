@@ -116,18 +116,18 @@ def Model(self):
         self.modelD.summary()
         
         return self.modelD
-    def laplacian_loss(self, y_true, y_pred):
-        mean_true = y_true[:, :, :, 0]
-        mean_pred = y_pred[:, :, :, 0]
-        scale_pred = y_pred[:, :, :, 1]
-        #loss = tf.abs(tf.math.divide(tf.math.abs(mean_true - mean_pred), scale_pred + 1e-2) + tf.math.log(scale_pred + 1e-2))
-        loss = tf.reduce_mean( tf.exp(scale_pred) *tf.square( (mean_pred-mean_true) ) ) + tf.reduce_mean(scale_pred)
+def laplacian_loss(self, y_true, y_pred):
+    mean_true = y_true[:, :, :, 0]
+    mean_pred = y_pred[:, :, :, 0]
+    scale_pred = y_pred[:, :, :, 1]
+    #loss = tf.abs(tf.math.divide(tf.math.abs(mean_true - mean_pred), scale_pred + 1e-2) + tf.math.log(scale_pred + 1e-2))
+    loss = tf.reduce_mean( tf.exp(scale_pred) *tf.square( (mean_pred-mean_true) ) ) + tf.reduce_mean(scale_pred)
 
-        return loss
+    return loss
 
-    def mae_on_first_channel(self, y_true, y_pred):
-        mean_true = y_true[:, :, :, 0]
-        mean_pred = y_pred[:, :, :, 0]
+def mae_on_first_channel(self, y_true, y_pred):
+    mean_true = y_true[:, :, :, 0]
+    mean_pred = y_pred[:, :, :, 0]
 
-        loss = tf.reduce_mean(tf.abs(mean_true - mean_pred))
-        return loss 
+    loss = tf.reduce_mean(tf.abs(mean_true - mean_pred))
+    return loss 
