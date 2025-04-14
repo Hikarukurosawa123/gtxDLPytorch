@@ -3,13 +3,14 @@ from keras.models import Model, load_model
 from keras.layers import BatchNormalization, Input, concatenate, Conv2D, add, Conv3D, Reshape, SeparableConv2D, Dropout, MaxPool2D,MaxPool3D, UpSampling2D, ZeroPadding2D, Activation
 from keras.preprocessing import image
 import keras
+from Models_pytorch.siamese_pytorch import TinyModel
+
 class ModelInit():  
-        def drop_out(self, x, drop_out = None):
-            if drop_out: 
-                x = Dropout(drop_out)(x, training = True)
+
+        def __init__(self):
+                super().__init__()
         
-            return x 
-        
+        #helper function: attention gate 
         def attention_gate(self, g, s, num_filters):
             Wg = Conv2D(num_filters, 1, strides = (2,2), padding="valid")(g)
             Ws = Conv2D(num_filters, 1, padding="same")(s)
@@ -19,7 +20,8 @@ class ModelInit():
             out = Activation("sigmoid")(out)
             out = UpSampling2D()(out)
             return out * g
-        def Model(self):
+        
+        def Model_tf(self):
                 """The deep learning architecture gets defined here"""
                 
                 # Input Optical Properties ##
@@ -171,5 +173,8 @@ class ModelInit():
                 self.modelD.compile(loss=['mae', 'mae'],
                         optimizer=getattr(keras.optimizers,self.params['optimizer'])(learning_rate=self.params['learningRate']),
                         metrics=['mae', 'mae'])
-                self.modelD.summary()
-                return None
+
+        def Model_pt(self):
+
+                self.modelD = TinyModel()
+                

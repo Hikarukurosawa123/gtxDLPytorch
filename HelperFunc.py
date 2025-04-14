@@ -25,8 +25,11 @@ import mat73
 from os.path import isfile, join
 import time
 import tempfile
+from torch.utils.data import Dataset, DataLoader
 
+import torch
 
+from DataImport import MyDataset
 class MonteCarloDropout(Dropout):
     def call(self, inputs):
         return super().call(inputs, training=True)
@@ -35,7 +38,8 @@ class MonteCarloDropout(Dropout):
     
 class Helper():
     def __init__(self):
-        pass
+        super().__init__()
+        
     def Plot(self,isTraining=False):
             while True:
                 if isTraining==True:
@@ -171,7 +175,7 @@ class Helper():
 
         #filter files 
         for file in files_in_s3:
-            if file.endswith(".keras"):
+            if file.endswith((".keras", ".pt")):
                 filename = "ModelParameters/"+ file 
                 
                 h5_files.append(filename)
@@ -196,7 +200,12 @@ class Helper():
                     tmp_file_path = tmp_file.name  # Get the path to the temporary file
 
                 # Load the model from the temporary file
-                self.modelD = load_model(tmp_file_path, compile=False)
+
+                if not self.run_torch:
+                    self.modelD = load_model(tmp_file_path, compile=False)
+                else: 
+                    self.modelD = torch.load(tmp_file_path, weights_only = False)
+
                 #print(tmp_file_path)
 
                 # Optionally, clean up the temporary file (if delete=False)
@@ -375,13 +384,35 @@ class Helper():
 
         #self.Predict()
         self.OP = np.array(self.OP)
-        self.FL = np.array(self.FL)
+        self.FL = np.array(self.FL) #scale by 2
 
-        predict = self.modelD.predict([self.OP, self.FL], batch_size = 32)  
+
+        if not self.run_torch:
+            predict = self.modelD.predict([self.OP, self.FL], batch_size = 32)  
+        else:
+
+            #convert the data type 
+            #reshape image to have the shape (N, H, W, C) --> (N, C, H, W)
+            testing_image_OP = np.transpose(self.OP, (0, 3, 1,2))
+            testing_image_FL = np.transpose(self.FL, (0, 3, 1,2))
+
+            testing_image_OP = torch.tensor(testing_image_OP, dtype=torch.float32)
+            testing_image_FL = torch.tensor(testing_image_FL, dtype=torch.float32)
+            testing_set = MyDataset(testing_image_OP, testing_image_FL,self.QF, self.DF)
+
+            #convert shape of the input to accomodate the expected shape
+
+            # Create data loaders for our datasets; shuffle for training, not for validation
+            #testing_loader = DataLoader(testing_set, batch_size=32, shuffle=True)
+
+            #load model 
+            predict = self.modelD(testing_image_OP, testing_image_FL)  
+        
+
         
         #predict = self.modelD.predict_on_batch([self.OP, self.FL])
-        QF_P = predict[0] 
-        DF_P = predict[1]
+        QF_P = predict[0].detach().numpy()
+        DF_P = predict[1].detach().numpy()
        
         QF_P /= self.params['scaleQF']
         DF_P /= self.params['scaleDF']  
@@ -391,8 +422,14 @@ class Helper():
         #    plot_save_path = 'Predictions/' + self.exportName + '/'
 
         #reshape so that last dimension is removed 
-        DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[1], DF_P.shape[2]))
-        QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[1], QF_P.shape[2]))
+
+        if not self.run_torch:
+            DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[1], DF_P.shape[2]))
+            QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[1], QF_P.shape[2]))
+        else: 
+            DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[2], DF_P.shape[3]))
+            QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[2], QF_P.shape[3]))
+
 
 
         ## Error Stats
@@ -585,7 +622,7 @@ class Helper():
         
         num_example_inclusion = [x * 19 for x in range(40)]
 
-        self.save = 'y'
+        self.save = 'n'
         plot_save_path = './predictions4/'
 
         if self.DF.shape[0] < 10:

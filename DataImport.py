@@ -12,8 +12,35 @@ import boto3
 from botocore.exceptions import ClientError
 import os
 import mat73
+import torch 
+from Models_pytorch.siamese_pytorch import TinyModel
+# PyTorch TensorBoard support
+from torch.utils.tensorboard import SummaryWriter
+from datetime import datetime
+from torch.utils.data import Dataset, DataLoader
 
+class MyDataset(Dataset):
+    def __init__(self, images1, images2, labels1, labels2):
 
+        super().__init__()
+
+        self.images1 = torch.tensor(images1, dtype=torch.float32)
+        self.images2 = torch.tensor(images2, dtype=torch.float32)
+
+        self.labels1 = torch.tensor(labels1, dtype=torch.float32)
+        self.labels2 = torch.tensor(labels2, dtype=torch.float32)
+
+    def __len__(self):
+        return self.images1.shape[0]
+
+    def __getitem__(self, idx):
+        image1 = self.images1[idx]       # shape: [2, 101, 101]
+        image2 = self.images2[idx]       # shape: [6, 101, 101]
+
+        label1 = self.labels1[idx]       # shape: [101, 101] # QF
+        label2 = self.labels2[idx]       # shape: [101, 101] # QF
+
+        return image1,image2, label1, label2
 class Operations():
     
     def __init__(self):
@@ -73,7 +100,7 @@ class Operations():
                 else:
                     print('Invalid entry.')
 
-            self.Plot(isTraining=True)
+            #self.Plot(isTraining=True)
             return None
         
     def Params(self):
@@ -365,9 +392,9 @@ class Operations():
         #display the model parameters available for export 
         keras_files = []
         for folder in os.listdir("ModelParameters"):
-            if not folder.endswith((".h5",".log",".xml", ".keras")):
+            if not folder.endswith((".h5",".log",".xml", ".keras", ".pt")):
                 for file in os.listdir("ModelParameters/"+folder):
-                    if file.endswith(".keras") or file.endswith(".h5"):
+                    if file.endswith((".keras", ".h5", ".pt")):
                         filename = "ModelParameters/"+folder+'/'+file
                         keras_files.append(filename)
                         print(filename)        
@@ -379,20 +406,129 @@ class Operations():
 
         
         #send to AWS 
-        print(type(loadFile))
-        self.exportPath = loadFile.replace('.keras', '')
+        if not self.run_torch: 
+            self.exportPath = loadFile.replace('.keras', '')
 
-        params_log_file_name = self.exportPath+'_params.log'
-        params_xml_file_name = self.exportPath+'_params.xlsx'
-        keras_file_name = self.exportPath+'.keras'
-        params_case_file_name = self.exportPath+'.log'
+            params_log_file_name = self.exportPath+'_params.log'
+            params_xml_file_name = self.exportPath+'_params.xlsx'
+            keras_file_name = self.exportPath+'.keras'
+            params_case_file_name = self.exportPath+'.log'
 
-        self.upload_file(params_log_file_name)
-        self.upload_file(params_xml_file_name)
-        self.upload_file(keras_file_name)
-        self.upload_file(params_case_file_name)
+            self.upload_file(params_log_file_name)
+            self.upload_file(params_xml_file_name)
+            self.upload_file(keras_file_name)
+            self.upload_file(params_case_file_name)
+
+        else: 
+            pytorch_file_name = self.exportPath 
+            self.upload_file(pytorch_file_name)
+
 
         print("file uploaded to AWS")
+
+    
+    def train_one_epoch(self,epoch_index, tb_writer, loss_fn, training_loader, optimizer, model):
+        running_loss = 0.
+        last_loss = 0.
+
+        # Here, we use enumerate(training_loader) instead of
+        # iter(training_loader) so that we can track the batch
+        # index and do some intra-epoch reporting
+        for i, data in enumerate(training_loader):
+            # Every data instance is an input + label pair
+
+            print(type(data), len(data))
+
+            inputs1, inputs2, labels1, labels2 = data
+
+            # Zero your gradients for every batch!
+            optimizer.zero_grad()
+
+            # Make predictions for this batch
+            outputs1, outputs2 = model(inputs1, inputs2)
+
+            # Compute the loss and its gradients
+            loss = loss_fn(outputs1, labels1)  + loss_fn(outputs2, labels2)
+            loss.backward()
+
+
+            # Adjust learning weights
+            optimizer.step()
+
+            # Gather data and report
+            running_loss += loss.item()
+            if i % 1000 == 999:
+                last_loss = running_loss / 1000 # loss per batch
+                print('  batch {} loss: {}'.format(i + 1, last_loss))
+                tb_x = epoch_index * len(training_loader) + i + 1
+                tb_writer.add_scalar('Loss/train', last_loss, tb_x)
+                running_loss = 0.
+
+        return last_loss
+    
+    def train_and_validate(self, validation_loader, loss_fn, training_loader):
+        # Initializing in a separate cell so we can easily add more epochs to the same run
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        writer = SummaryWriter('runs/fashion_trainer_{}'.format(timestamp))
+        epoch_number = 0
+
+        EPOCHS =1
+
+        best_vloss = 1_000_000
+
+        #define model, optimizer, training_loader 
+        model = TinyModel()
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+
+        for epoch in range(EPOCHS):
+            print('EPOCH {}:'.format(epoch_number + 1))
+
+            # Make sure gradient tracking is on, and do a pass over the data
+            model.train(True)
+            avg_loss = self.train_one_epoch(epoch_number, writer, loss_fn, training_loader, optimizer, model)
+
+
+            running_vloss = 0.0
+            # Set the model to evaluation mode, disabling dropout and using population
+            # statistics for batch normalization.
+            model.eval()
+
+            # Disable gradient computation and reduce memory consumption.
+            with torch.no_grad():
+                for i, vdata in enumerate(validation_loader):
+
+                    vinputs1, vinputs2, vlabels1, vlabels2 = vdata
+                    voutputs1, voutputs2 = model(vinputs1, vinputs2)
+                    vloss = loss_fn(voutputs1, vlabels1) + loss_fn(voutputs2, vlabels2)
+                    running_vloss += vloss
+
+            avg_vloss = running_vloss / (i + 1)
+            print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
+
+            # Log the running loss averaged per batch
+            # for both training and validation
+            writer.add_scalars('Training vs. Validation Loss',
+                            { 'Training' : avg_loss, 'Validation' : avg_vloss },
+                            epoch_number + 1)
+            writer.flush()
+
+            # Track best performance, and save the model's state
+            if avg_vloss < best_vloss:
+                best_vloss = avg_vloss
+                model_path = 'model_{}_{}'.format(timestamp, epoch_number)
+                torch.save(model.state_dict(), model_path)
+
+            epoch_number += 1
+
+
+            #save the model after each epoch 
+            
+            torch.save(model, self.exportPath)
+
+
+    
+
 
     
     def Fit(self,isTransfer):
@@ -402,14 +538,54 @@ class Operations():
         earlyStopping = EarlyStopping(monitor='val_loss', min_delta=5e-5, patience=20, verbose=1, mode='auto')
         callbackList = [earlyStopping,lrDecay]
 
-        run_torch = 1
 
-        if run_torch:
-            #run training using torch 
+        if self.run_torch:
+            #structure dataset to be in the form (image, label)
 
-            #define the model 
+            #image in the shape (N, H, W, C)
+
+            #get 95% of the loaded data for training 
+            training_image_OP = self.OP[0:int(self.DF.shape[0] * 0.95), :,:,:]
+            validation_image_OP = self.OP[int(self.DF.shape[0] * 0.95):, :,:,:]
+
+            training_image_FL = self.FL[0:int(self.DF.shape[0] * 0.95), :,:,:]
+            validation_image_FL = self.FL[int(self.DF.shape[0] * 0.95):, :,:,:]
+
+            training_label_QF = self.QF[0:int(self.DF.shape[0] * 0.95), :,:]
+            validation_label_QF = self.QF[int(self.DF.shape[0] * 0.95):, :,:]
+            
+            training_label_DF = self.DF[0:int(self.DF.shape[0] * 0.95), :,:]
+            validation_label_DF = self.DF[int(self.DF.shape[0] * 0.95):, :,:]
+
+        
+
             
 
+            #reshape image to have the shape (N, H, W, C) --> (N, C, H, W)
+            training_image_OP = np.transpose(training_image_OP, (0, 3, 1,2))
+            validation_image_OP = np.transpose(validation_image_OP, (0, 3, 1,2))
+
+            training_image_FL = np.transpose(training_image_FL, (0, 3, 1,2))
+            validation_image_FL = np.transpose(validation_image_FL, (0, 3, 1,2))
+
+            training_set = MyDataset(training_image_OP, training_image_FL,training_label_QF, training_label_DF)
+            validation_set = MyDataset(validation_image_OP, validation_image_FL, validation_label_QF, validation_label_DF)
+
+            #convert shape of the input to accomodate the expected shape
+
+            # Create data loaders for our datasets; shuffle for training, not for validation
+            training_loader = DataLoader(training_set, batch_size=32, shuffle=True)
+            validation_loader = DataLoader(validation_set, batch_size=32, shuffle=True)
+
+            #run training using torch 
+            loss_fn = torch.nn.L1Loss()
+
+            #specify the save path 
+            os.makedirs("ModelParameters/"+self.exportName)
+            self.exportPath = 'ModelParameters/'+self.exportName+'/'+self.case + '.pt'
+
+            #define the model and train 
+            self.train_and_validate(validation_loader, loss_fn, training_loader)
 
             return 
     
