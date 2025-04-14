@@ -88,7 +88,6 @@ class Operations():
                     print('Invalid entry.')
                     
             
-            self.Model()
             while True:
                 isTransferTrain = input('Are you transfer training (i.e., Initial weights come from another pre-trained model)? (Y/N) ')
                 if isTransferTrain in ['Y','y']:
@@ -190,12 +189,7 @@ class Operations():
         self.OP = self.dataset['OP']
         self.QF = self.dataset['QF']
         self.RE = self.dataset['RE']
-        
-        print("DF shape: ", np.shape(self.DF))
-        print("OP shape: ", np.shape(self.OP))
-        print("QF shape: ", np.shape(self.QF))
-        print("RE shape: ", np.shape(self.RE))
-
+    
         self.temp_DF_pre_conversion = self.DF
         
         self.background_val = str(input('Enter the value of the background'))
@@ -203,11 +197,7 @@ class Operations():
             self.background_val = 0 #default to zero
         
         self.convert_background_val() #convert values of DF background
-        print("after applying conversion", np.shape(self.DF))
 
-        
-
-    
         # Check whether the user is using the single or multiple MAT format 
         # I.e., looking at individual MAT files (getDims=3) or looking at MAT files with more than one sample (getDim=4)
         getDims = len(np.shape(self.FL))
@@ -477,7 +467,7 @@ class Operations():
         best_vloss = 1_000_000
 
         #define model, optimizer, training_loader 
-        model = TinyModel()
+        model = self.Model_pt()
         optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
 
@@ -516,7 +506,7 @@ class Operations():
             # Track best performance, and save the model's state
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
-                model_path = 'model_{}_{}'.format(timestamp, epoch_number)
+                model_path = 'ModelParameters/'+self.exportName+'model_{}_{}'.format(timestamp, epoch_number)
                 torch.save(model.state_dict(), model_path)
 
             epoch_number += 1
@@ -588,35 +578,38 @@ class Operations():
             self.train_and_validate(validation_loader, loss_fn, training_loader)
 
             return 
-    
-        if len(self.exportName) > 0:
-            os.makedirs("ModelParameters/"+self.exportName)
-            self.exportPath = 'ModelParameters/'+self.exportName+'/'+self.case
-            #save dictionary as excel file 
-            #fileName = self.exportPath+'_params.xml'
-            self.paramsexcelfileName = self.exportPath + '_params.xlsx'
-            #xmlParams = dicttoxml(str(self.params))
-            
-            params_dict_for_excel_coversion = self.params.copy()
-            for key, value in params_dict_for_excel_coversion.items():
-                params_dict_for_excel_coversion[key] = str(value)
+        
+        else:
+            self.Model_tf()
+        
+            if len(self.exportName) > 0:
+                os.makedirs("ModelParameters/"+self.exportName)
+                self.exportPath = 'ModelParameters/'+self.exportName+'/'+self.case
+                #save dictionary as excel file 
+                #fileName = self.exportPath+'_params.xml'
+                self.paramsexcelfileName = self.exportPath + '_params.xlsx'
+                #xmlParams = dicttoxml(str(self.params))
                 
-            
-            params_dict_to_dataframe = pd.DataFrame(data=params_dict_for_excel_coversion, index = [0])
-            params_dict_to_dataframe.to_excel(self.paramsexcelfileName)
-            #with open(fileName,'w') as paramsFile:
-            #    paramsFile.write(parseString(xmlParams).toprettyxml("    "))
-            
-            # Model checkpoint is a keras default callback that saves the model architecture, weights,
-            Checkpoint = ModelCheckpoint(self.exportPath+'.keras')
-            # CSVLogger is a keras default callback that saves the results of each epoch
-            Logger = CSVLogger(self.exportPath+'.log')
-            callbackList.append(Checkpoint)
-            callbackList.append(Logger)
-            xmlParams = dicttoxml(str(self.params))
-            with open(self.exportPath+'_params.log','w') as paramsFile:
-                paramsFile.write(parseString(xmlParams).toprettyxml("    "))
+                params_dict_for_excel_coversion = self.params.copy()
+                for key, value in params_dict_for_excel_coversion.items():
+                    params_dict_for_excel_coversion[key] = str(value)
+                    
                 
+                params_dict_to_dataframe = pd.DataFrame(data=params_dict_for_excel_coversion, index = [0])
+                params_dict_to_dataframe.to_excel(self.paramsexcelfileName)
+                #with open(fileName,'w') as paramsFile:
+                #    paramsFile.write(parseString(xmlParams).toprettyxml("    "))
+                
+                # Model checkpoint is a keras default callback that saves the model architecture, weights,
+                Checkpoint = ModelCheckpoint(self.exportPath+'.keras')
+                # CSVLogger is a keras default callback that saves the results of each epoch
+                Logger = CSVLogger(self.exportPath+'.log')
+                callbackList.append(Checkpoint)
+                callbackList.append(Logger)
+                xmlParams = dicttoxml(str(self.params))
+                with open(self.exportPath+'_params.log','w') as paramsFile:
+                    paramsFile.write(parseString(xmlParams).toprettyxml("    "))
+                    
         start = time.perf_counter()
         
         if isTransfer==True:

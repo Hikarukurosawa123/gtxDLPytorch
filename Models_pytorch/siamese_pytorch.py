@@ -103,11 +103,3 @@ class TinyModel(torch.nn.Module):
         QF, DF = self.output(post_intermediate)
         return QF, DF
     
-
-tinymodel = TinyModel()
-input_image = torch.rand(1,2,101,101)
-input_image2 = torch.rand(1,6,101,101)
-
-
-logits = tinymodel(input_image, input_image2)
-print(logits)
