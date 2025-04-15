@@ -16,9 +16,9 @@ class DL(Utils, Helper, ModelInit, Operations):
         self.isTesting = False
         self.AWS = False
 
-        #choose whether to run pytorch or tensorflow 
-        self.run_torch = 1
 
+        #choose whether to run pytorch or tensorflow 
+        self.run_torch = 0
 
 if __name__ == "__main__":
 

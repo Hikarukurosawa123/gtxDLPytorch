@@ -25,11 +25,11 @@ import mat73
 from os.path import isfile, join
 import time
 import tempfile
-from torch.utils.data import Dataset, DataLoader
+#from torch.utils.data import Dataset, DataLoader
 
-import torch
+#import torch
 
-from DataImport import MyDataset
+#from DataImport import MyDataset
 class MonteCarloDropout(Dropout):
     def call(self, inputs):
         return super().call(inputs, training=True)
@@ -127,7 +127,7 @@ class Helper():
 
         #filter files 
         for file in files_in_s3:
-            if file.endswith((".keras", ".pt")):
+            if file.endswith((".keras", ".pt", ".h5")):
                 filename = "ModelParameters/"+ file 
                 
                 h5_files.append(filename)
@@ -146,17 +146,18 @@ class Helper():
                 model_data = obj['Body'].read()
 
                 # Create a temporary file to store the model
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.keras') as tmp_file:
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as tmp_file:
                     # Write the binary data to the temporary file
                     tmp_file.write(model_data)
                     tmp_file_path = tmp_file.name  # Get the path to the temporary file
 
                 # Load the model from the temporary file
 
-                if not self.run_torch:
-                    self.modelD = load_model(tmp_file_path, compile=False)
-                else: 
-                    self.modelD = torch.load(tmp_file_path, weights_only = False)
+                #if not self.run_torch:
+
+                self.modelD = load_model(tmp_file_path, compile=False)
+                #else: 
+                #    self.modelD = torch.load(tmp_file_path, weights_only = False)
 
                 # Optionally, clean up the temporary file (if delete=False)
                 import os
@@ -192,29 +193,31 @@ class Helper():
         self.FL = np.array(self.FL) #scale by 2
 
 
-        if not self.run_torch:
-            predict = self.modelD.predict([self.OP, self.FL], batch_size = 32)  
-        else:
+        #if not self.run_torch:
+        predict = self.modelD.predict([self.OP, self.FL], batch_size = 32)  
+        print(predict)
+        #else:
 
             #convert the data type 
             #reshape image to have the shape (N, H, W, C) --> (N, C, H, W)
-            testing_image_OP = np.transpose(self.OP, (0, 3, 1,2))
-            testing_image_FL = np.transpose(self.FL, (0, 3, 1,2))
+       #     testing_image_OP = np.transpose(self.OP, (0, 3, 1,2))
+       #     testing_image_FL = np.transpose(self.FL, (0, 3, 1,2))
 
-            testing_image_OP = torch.tensor(testing_image_OP, dtype=torch.float32)
-            testing_image_FL = torch.tensor(testing_image_FL, dtype=torch.float32)
+       #     testing_image_OP = torch.tensor(testing_image_OP, dtype=torch.float32)
+       #     testing_image_FL = torch.tensor(testing_image_FL, dtype=torch.float32)
         
             #load model 
-            predict = self.modelD(testing_image_OP, testing_image_FL)  
+       #     predict = self.modelD(testing_image_OP, testing_image_FL)  
         
-        QF_P = predict[0].detach().numpy()
-        DF_P = predict[1].detach().numpy()
-       
+       # QF_P = predict[0].detach().numpy()
+        #DF_P = predict[1].detach().numpy()
+        QF_P = predict[0]
+        DF_P = predict[1]
         QF_P /= self.params['scaleQF']
         DF_P /= self.params['scaleDF']  
 
         self.save = 'n'
-
+        '''
         if not self.run_torch:
             DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[1], DF_P.shape[2]))
             QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[1], QF_P.shape[2]))
@@ -222,8 +225,9 @@ class Helper():
             DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[2], DF_P.shape[3]))
             QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[2], QF_P.shape[3]))
 
-
-
+        '''
+        DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[1], DF_P.shape[2]))
+        QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[1], QF_P.shape[2]))
         ## Error Stats
         # Average error
         
@@ -250,8 +254,8 @@ class Helper():
             
         DF_min = np.array(DF_min)
         DFP_min = np.array(DFP_min)
-        QF_max = np.array(QF_max)
-        QFP_max = np.array(QFP_max)
+        #QF_max = np.array(QF_max)
+        #QFP_max = np.array(QFP_max)
 
         #compute absolute mindepth error 
         min_depth_error = np.mean(np.abs(DFP_min - DF_min))
@@ -259,8 +263,8 @@ class Helper():
         print("Average Minimum Depth Error (SD) : {min_depth_error} ({min_depth_error_std})".format(min_depth_error = min_depth_error, min_depth_error_std = min_depth_error_std))
 
         
-        num_predict_zeros = self.count_predictions_of_zero(DFP_min)
-        print("number of predictions of zero:", num_predict_zeros)
+        #num_predict_zeros = self.count_predictions_of_zero(DFP_min)
+        #print("number of predictions of zero:", num_predict_zeros)
         # SSIM per sample
         DF_ssim =[]
         QF_ssim =[]

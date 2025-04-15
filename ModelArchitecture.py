@@ -3,7 +3,7 @@ from keras.models import Model, load_model
 from keras.layers import BatchNormalization, Input, concatenate, Conv2D, add, Conv3D, Reshape, SeparableConv2D, Dropout, MaxPool2D,MaxPool3D, UpSampling2D, ZeroPadding2D, Activation
 from keras.preprocessing import image
 import keras
-from Models_pytorch.siamese_pytorch import TinyModel
+#from Models_pytorch.siamese_pytorch import TinyModel
 
 class ModelInit():  
 
@@ -175,6 +175,7 @@ class ModelInit():
                         metrics=['mae', 'mae'])
 
         def Model_pt(self):
+                pass
 
-                self.modelD = TinyModel()
+                #self.modelD = TinyModel()
                 

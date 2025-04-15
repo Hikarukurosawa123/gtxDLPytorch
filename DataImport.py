@@ -12,13 +12,14 @@ import boto3
 from botocore.exceptions import ClientError
 import os
 import mat73
-import torch 
-from Models_pytorch.siamese_pytorch import TinyModel
+#import torch 
+#from Models_pytorch.siamese_pytorch import TinyModel
 # PyTorch TensorBoard support
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
-from torch.utils.data import Dataset, DataLoader
+#from torch.utils.data import Dataset, DataLoader
 
+'''
 class MyDataset(Dataset):
     def __init__(self, images1, images2, labels1, labels2):
 
@@ -41,6 +42,8 @@ class MyDataset(Dataset):
         label2 = self.labels2[idx]       # shape: [101, 101] # QF
 
         return image1,image2, label1, label2
+
+'''
 class Operations():
     
     def __init__(self):
@@ -416,7 +419,7 @@ class Operations():
 
         print("file uploaded to AWS")
 
-    
+    '''
     def train_one_epoch(self,epoch_index, tb_writer, loss_fn, training_loader, optimizer, model):
         running_loss = 0.
         last_loss = 0.
@@ -516,7 +519,7 @@ class Operations():
             
             torch.save(model, self.exportPath)
 
-
+    '''
     
 
 
@@ -528,7 +531,7 @@ class Operations():
         earlyStopping = EarlyStopping(monitor='val_loss', min_delta=5e-5, patience=20, verbose=1, mode='auto')
         callbackList = [earlyStopping,lrDecay]
 
-
+        '''
         if self.run_torch:
             #structure dataset to be in the form (image, label)
 
@@ -578,8 +581,9 @@ class Operations():
             self.train_and_validate(validation_loader, loss_fn, training_loader)
 
             return 
+            '''
+        if not self.run_torch:
         
-        else:
             self.Model_tf()
         
             if len(self.exportName) > 0:
