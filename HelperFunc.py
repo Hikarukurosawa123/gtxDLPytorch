@@ -127,7 +127,7 @@ class Helper():
 
         #filter files 
         for file in files_in_s3:
-            if file.endswith((".keras", ".pt", ".h5")):
+            if file.endswith((".keras", ".pt")):
                 filename = "ModelParameters/"+ file 
                 
                 h5_files.append(filename)
@@ -146,7 +146,7 @@ class Helper():
                 model_data = obj['Body'].read()
 
                 # Create a temporary file to store the model
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.h5') as tmp_file:
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.keras') as tmp_file:
                     # Write the binary data to the temporary file
                     tmp_file.write(model_data)
                     tmp_file_path = tmp_file.name  # Get the path to the temporary file

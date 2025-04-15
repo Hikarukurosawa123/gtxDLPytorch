@@ -181,9 +181,7 @@ class Operations():
         dataTemp = obj['Body'].read()
     
         self.dataset = mat73.loadmat((io.BytesIO(dataTemp)))
-        
-
-        
+  
         apply_normalization = 0
 
         self.FL = self.dataset['F']
@@ -192,6 +190,28 @@ class Operations():
         self.OP = self.dataset['OP']
         self.QF = self.dataset['QF']
         self.RE = self.dataset['RE']
+
+
+        #expand the first axis if the dimension is of size 2
+        if  len(np.shape(self.FL)) == 3:
+            self.DF = np.expand_dims(self.dataset['DF'], axis=0)
+            self.OP = np.expand_dims(self.dataset['OP'], axis=0)
+            self.QF = np.expand_dims(self.dataset['QF'], axis=0)
+            self.RE = np.expand_dims(self.dataset['RE'], axis=0)
+            self.FL = np.expand_dims(self.dataset['RE'], axis=0)
+
+        #pad with ones temporarily 
+
+        self.DF = np.pad(self.DF, ((0,0), (0, 1), (0, 1)), mode='constant')
+        self.OP = np.pad(self.OP, ((0,0),(0, 1), (0, 1), (0,0)), mode='constant')
+        self.QF = np.pad(self.QF, ((0,0),(0, 1), (0, 1)), mode='constant')
+        self.RE = np.pad(self.RE, ((0,0),(0, 1), (0, 1), (0,0)), mode='constant')
+        self.FL = np.pad(self.FL, ((0,0),(0, 1), (0, 1), (0,0)), mode='constant')
+
+        print(np.shape(self.FL))
+        print(np.shape(self.DF))
+      
+
     
         self.temp_DF_pre_conversion = self.DF
         
