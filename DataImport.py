@@ -5,21 +5,20 @@ import os, time, sys
 import boto3 
 import numpy as np, h5py
 import pandas as pd
-from keras.callbacks import History, EarlyStopping, ModelCheckpoint, CSVLogger, TensorBoard, LearningRateScheduler, ReduceLROnPlateau
 from dicttoxml import dicttoxml
 import logging
 import boto3
 from botocore.exceptions import ClientError
 import os
 import mat73
-#import torch 
-#from Models_pytorch.siamese_pytorch import TinyModel
-# PyTorch TensorBoard support
-#from torch.utils.tensorboard import SummaryWriter
+import torch 
+from Models_pytorch.siamese_pytorch import TinyModel
+#PyTorch TensorBoard support
+from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
-#from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
 
-'''
+
 class MyDataset(Dataset):
     def __init__(self, images1, images2, labels1, labels2):
 
@@ -43,7 +42,7 @@ class MyDataset(Dataset):
 
         return image1,image2, label1, label2
 
-'''
+
 class Operations():
     
     def __init__(self):
@@ -202,15 +201,12 @@ class Operations():
 
         #pad with ones temporarily 
 
-        self.DF = np.pad(self.DF, ((0,0), (0, 1), (0, 1)), mode='constant')
-        self.OP = np.pad(self.OP, ((0,0),(0, 1), (0, 1), (0,0)), mode='constant')
-        self.QF = np.pad(self.QF, ((0,0),(0, 1), (0, 1)), mode='constant')
-        self.RE = np.pad(self.RE, ((0,0),(0, 1), (0, 1), (0,0)), mode='constant')
-        self.FL = np.pad(self.FL, ((0,0),(0, 1), (0, 1), (0,0)), mode='constant')
+        # self.DF = np.pad(self.DF, ((0,0), (0, 1), (0, 1)), mode='constant')
+        # self.OP = np.pad(self.OP, ((0,0),(0, 1), (0, 1), (0,0)), mode='constant')
+        # self.QF = np.pad(self.QF, ((0,0),(0, 1), (0, 1)), mode='constant')
+        # self.RE = np.pad(self.RE, ((0,0),(0, 1), (0, 1), (0,0)), mode='constant')
+        # self.FL = np.pad(self.FL, ((0,0),(0, 1), (0, 1), (0,0)), mode='constant')
 
-        print(np.shape(self.FL))
-        print(np.shape(self.DF))
-      
 
     
         self.temp_DF_pre_conversion = self.DF
@@ -405,9 +401,9 @@ class Operations():
         #display the model parameters available for export 
         keras_files = []
         for folder in os.listdir("ModelParameters"):
-            if not folder.endswith((".h5",".log",".xml", ".keras", ".pt")):
+            if not folder.endswith((".h5",".log",".xml", ".pt")):
                 for file in os.listdir("ModelParameters/"+folder):
-                    if file.endswith((".keras", ".h5", ".pt")):
+                    if file.endswith((".pt")):
                         filename = "ModelParameters/"+folder+'/'+file
                         keras_files.append(filename)
                         print(filename)        
@@ -418,29 +414,15 @@ class Operations():
             break 
 
         
-        #send to AWS 
-        if not self.run_torch: 
-            self.exportPath = loadFile.replace('.keras', '')
-
-            params_log_file_name = self.exportPath+'_params.log'
-            params_xml_file_name = self.exportPath+'_params.xlsx'
-            keras_file_name = self.exportPath+'.keras'
-            params_case_file_name = self.exportPath+'.log'
-
-            self.upload_file(params_log_file_name)
-            self.upload_file(params_xml_file_name)
-            self.upload_file(keras_file_name)
-            self.upload_file(params_case_file_name)
-
-        else: 
-            pytorch_file_name = self.exportPath 
-            self.upload_file(pytorch_file_name)
+    
+        pytorch_file_name = self.exportPath 
+        self.upload_file(pytorch_file_name)
 
 
         print("file uploaded to AWS")
 
-    '''
-    def train_one_epoch(self,epoch_index, tb_writer, loss_fn, training_loader, optimizer, model):
+    
+    def train_one_epoch(self,epoch_index, tb_writer, loss_fn, training_loader, optimizer):
         running_loss = 0.
         last_loss = 0.
 
@@ -458,7 +440,7 @@ class Operations():
             optimizer.zero_grad()
 
             # Make predictions for this batch
-            outputs1, outputs2 = model(inputs1, inputs2)
+            outputs1, outputs2 = self.modelD(inputs1, inputs2)
 
             # Compute the loss and its gradients
             loss = loss_fn(outputs1, labels1)  + loss_fn(outputs2, labels2)
@@ -490,29 +472,29 @@ class Operations():
         best_vloss = 1_000_000
 
         #define model, optimizer, training_loader 
-        model = self.Model_pt()
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        self.Model_pt()
+        optimizer = torch.optim.SGD(self.modelD.parameters(), lr=0.001, momentum=0.9)
 
 
         for epoch in range(EPOCHS):
             print('EPOCH {}:'.format(epoch_number + 1))
 
             # Make sure gradient tracking is on, and do a pass over the data
-            model.train(True)
-            avg_loss = self.train_one_epoch(epoch_number, writer, loss_fn, training_loader, optimizer, model)
+            self.modelD.train(True)
+            avg_loss = self.train_one_epoch(epoch_number, writer, loss_fn, training_loader, optimizer)
 
 
             running_vloss = 0.0
             # Set the model to evaluation mode, disabling dropout and using population
             # statistics for batch normalization.
-            model.eval()
+            self.modelD.eval()
 
             # Disable gradient computation and reduce memory consumption.
             with torch.no_grad():
                 for i, vdata in enumerate(validation_loader):
 
                     vinputs1, vinputs2, vlabels1, vlabels2 = vdata
-                    voutputs1, voutputs2 = model(vinputs1, vinputs2)
+                    voutputs1, voutputs2 = self.modelD(vinputs1, vinputs2)
                     vloss = loss_fn(voutputs1, vlabels1) + loss_fn(voutputs2, vlabels2)
                     running_vloss += vloss
 
@@ -530,16 +512,16 @@ class Operations():
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
                 model_path = 'ModelParameters/'+self.exportName+'model_{}_{}'.format(timestamp, epoch_number)
-                torch.save(model.state_dict(), model_path)
+                torch.save(self.modelD.state_dict(), model_path)
 
             epoch_number += 1
 
 
             #save the model after each epoch 
             
-            torch.save(model, self.exportPath)
+            torch.save(self.modelD, self.exportPath)
 
-    '''
+    
     
 
 
@@ -547,120 +529,58 @@ class Operations():
     def Fit(self,isTransfer):
         # Where to export information about the fit
         self.exportName = input('Enter a name for exporting the model: ')
-        lrDecay = ReduceLROnPlateau(monitor='val_loss', factor=0.4, patience=5, verbose=1, min_delta=5e-5)
-        earlyStopping = EarlyStopping(monitor='val_loss', min_delta=5e-5, patience=20, verbose=1, mode='auto')
-        callbackList = [earlyStopping,lrDecay]
+        #lrDecay = ReduceLROnPlateau(monitor='val_loss', factor=0.4, patience=5, verbose=1, min_delta=5e-5)
+        #earlyStopping = EarlyStopping(monitor='val_loss', min_delta=5e-5, patience=20, verbose=1, mode='auto')
+        #callbackList = [earlyStopping,lrDecay]
 
-        '''
-        if self.run_torch:
-            #structure dataset to be in the form (image, label)
+        
+    
+        #structure dataset to be in the form (image, label)
 
-            #image in the shape (N, H, W, C)
+        #image in the shape (N, H, W, C)
 
-            #get 95% of the loaded data for training 
-            training_image_OP = self.OP[0:int(self.DF.shape[0] * 0.95), :,:,:]
-            validation_image_OP = self.OP[int(self.DF.shape[0] * 0.95):, :,:,:]
+        #get 95% of the loaded data for training 
+        training_image_OP = self.OP[0:int(self.DF.shape[0] * 0.95), :,:,:]
+        validation_image_OP = self.OP[int(self.DF.shape[0] * 0.95):, :,:,:]
 
-            training_image_FL = self.FL[0:int(self.DF.shape[0] * 0.95), :,:,:]
-            validation_image_FL = self.FL[int(self.DF.shape[0] * 0.95):, :,:,:]
+        training_image_FL = self.FL[0:int(self.DF.shape[0] * 0.95), :,:,:]
+        validation_image_FL = self.FL[int(self.DF.shape[0] * 0.95):, :,:,:]
 
-            training_label_QF = self.QF[0:int(self.DF.shape[0] * 0.95), :,:]
-            validation_label_QF = self.QF[int(self.DF.shape[0] * 0.95):, :,:]
-            
-            training_label_DF = self.DF[0:int(self.DF.shape[0] * 0.95), :,:]
-            validation_label_DF = self.DF[int(self.DF.shape[0] * 0.95):, :,:]
+        training_label_QF = self.QF[0:int(self.DF.shape[0] * 0.95), :,:]
+        validation_label_QF = self.QF[int(self.DF.shape[0] * 0.95):, :,:]
+        
+        training_label_DF = self.DF[0:int(self.DF.shape[0] * 0.95), :,:]
+        validation_label_DF = self.DF[int(self.DF.shape[0] * 0.95):, :,:]
+
+    
 
         
 
-            
+        #reshape image to have the shape (N, H, W, C) --> (N, C, H, W)
+        training_image_OP = np.transpose(training_image_OP, (0, 3, 1,2))
+        validation_image_OP = np.transpose(validation_image_OP, (0, 3, 1,2))
 
-            #reshape image to have the shape (N, H, W, C) --> (N, C, H, W)
-            training_image_OP = np.transpose(training_image_OP, (0, 3, 1,2))
-            validation_image_OP = np.transpose(validation_image_OP, (0, 3, 1,2))
+        training_image_FL = np.transpose(training_image_FL, (0, 3, 1,2))
+        validation_image_FL = np.transpose(validation_image_FL, (0, 3, 1,2))
 
-            training_image_FL = np.transpose(training_image_FL, (0, 3, 1,2))
-            validation_image_FL = np.transpose(validation_image_FL, (0, 3, 1,2))
+        training_set = MyDataset(training_image_OP, training_image_FL,training_label_QF, training_label_DF)
+        validation_set = MyDataset(validation_image_OP, validation_image_FL, validation_label_QF, validation_label_DF)
 
-            training_set = MyDataset(training_image_OP, training_image_FL,training_label_QF, training_label_DF)
-            validation_set = MyDataset(validation_image_OP, validation_image_FL, validation_label_QF, validation_label_DF)
+        #convert shape of the input to accomodate the expected shape
 
-            #convert shape of the input to accomodate the expected shape
+        # Create data loaders for our datasets; shuffle for training, not for validation
+        training_loader = DataLoader(training_set, batch_size=32, shuffle=True)
+        validation_loader = DataLoader(validation_set, batch_size=32, shuffle=True)
 
-            # Create data loaders for our datasets; shuffle for training, not for validation
-            training_loader = DataLoader(training_set, batch_size=32, shuffle=True)
-            validation_loader = DataLoader(validation_set, batch_size=32, shuffle=True)
+        #run training using torch 
+        loss_fn = torch.nn.L1Loss()
 
-            #run training using torch 
-            loss_fn = torch.nn.L1Loss()
+        #specify the save path 
+        os.makedirs("ModelParameters/"+self.exportName)
+        self.exportPath = 'ModelParameters/'+self.exportName+'/'+self.case + '.pt'
 
-            #specify the save path 
-            os.makedirs("ModelParameters/"+self.exportName)
-            self.exportPath = 'ModelParameters/'+self.exportName+'/'+self.case + '.pt'
+        #define the model and train 
+        self.train_and_validate(validation_loader, loss_fn, training_loader)
 
-            #define the model and train 
-            self.train_and_validate(validation_loader, loss_fn, training_loader)
-
-            return 
-            '''
-        if not self.run_torch:
+        return 
         
-            self.Model_tf()
-        
-            if len(self.exportName) > 0:
-                os.makedirs("ModelParameters/"+self.exportName)
-                self.exportPath = 'ModelParameters/'+self.exportName+'/'+self.case
-                #save dictionary as excel file 
-                #fileName = self.exportPath+'_params.xml'
-                self.paramsexcelfileName = self.exportPath + '_params.xlsx'
-                #xmlParams = dicttoxml(str(self.params))
-                
-                params_dict_for_excel_coversion = self.params.copy()
-                for key, value in params_dict_for_excel_coversion.items():
-                    params_dict_for_excel_coversion[key] = str(value)
-                    
-                
-                params_dict_to_dataframe = pd.DataFrame(data=params_dict_for_excel_coversion, index = [0])
-                params_dict_to_dataframe.to_excel(self.paramsexcelfileName)
-                #with open(fileName,'w') as paramsFile:
-                #    paramsFile.write(parseString(xmlParams).toprettyxml("    "))
-                
-                # Model checkpoint is a keras default callback that saves the model architecture, weights,
-                Checkpoint = ModelCheckpoint(self.exportPath+'.keras')
-                # CSVLogger is a keras default callback that saves the results of each epoch
-                Logger = CSVLogger(self.exportPath+'.log')
-                callbackList.append(Checkpoint)
-                callbackList.append(Logger)
-                xmlParams = dicttoxml(str(self.params))
-                with open(self.exportPath+'_params.log','w') as paramsFile:
-                    paramsFile.write(parseString(xmlParams).toprettyxml("    "))
-                    
-        start = time.perf_counter()
-        
-        if isTransfer==True:
-            h5_files = []
-            for folder in os.listdir("ModelParameters"):
-                if not folder.endswith((".h5",".log",".xml")):
-                    for file in os.listdir("ModelParameters/"+folder):
-                        if file.endswith((".h5", ".keras")):
-                            filename = "ModelParameters/"+folder+'/'+file
-                            h5_files.append(filename)
-                            print(filename)
-            loadFile = input('Enter the general and specific directory (e.g. meshLRTests\\\LR2e-5) pertaining to the .h5 (weights) file you would like to load: ')
-            self.params['transfer_learning_file_name'] = loadFile #insert the name of the loaded file inside the params dictionary 
-            self.params['learningRate']=8e-6
-            self.modelD.load_weights(loadFile)
-            self.history = self.modelD.fit([self.OP, self.FL], [self.QF, self.DF],validation_split=0.2,batch_size=self.params['batch'],
-                                    epochs=50, verbose=1, shuffle=True, callbacks=callbackList)     
-        else:
-
-            self.history = self.modelD.fit([self.OP, self.FL], [self.QF, self.DF],validation_split=0.2,batch_size=self.params['batch'],
-                                    epochs=self.params['epochs'], verbose=1, shuffle=True, callbacks=callbackList)    
-        
-        if hasattr(self,'exportPath'):
-            fileName = self.exportPath+'_params.xml'
-            with open(fileName,'w') as paramsFile:
-                paramsFile.write(parseString(xmlParams).toprettyxml("    "))
-
-        stop = time.perf_counter()
-        print('Fit time = ' + str(stop-start))
-        return None

@@ -4,7 +4,7 @@ from HelperFunc import Helper
 from ModelArchitecture import ModelInit
 from DataImport import Operations
 
-class DL(Utils, Helper, ModelInit, Operations):    
+class DL(Utils,Helper, ModelInit, Operations):    
     # Initialization method runs whenever an instance of the class is initiated
     def __init__(self):
         super().__init__()
@@ -14,11 +14,7 @@ class DL(Utils, Helper, ModelInit, Operations):
         self.case = isCase
         self.params = self.Defaults(self.case) # Define some default parameters based on the selected case
         self.isTesting = False
-        self.AWS = False
-
-
-        #choose whether to run pytorch or tensorflow 
-        self.run_torch = 0
+        self.AWS = False        
 
 if __name__ == "__main__":
 
