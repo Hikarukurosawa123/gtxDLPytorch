@@ -93,9 +93,11 @@ class Helper():
     def convert_background_val(self):
         self.DF = np.array(self.DF)
    
-        for x in range(self.DF.shape[0]):
-            ind_zeros = self.DF[x, :,:] == 0
-            self.DF[x,ind_zeros] = self.background_val
+        # for x in range(self.DF.shape[0]):
+        #     ind_zeros = self.DF[x, :,:] == 0
+        #     self.DF[x,ind_zeros] = self.background_val
+        self.DF = np.where(self.DF == 0, self.background_val, self.DF)
+
    
     def import_data_for_testing(self):
         

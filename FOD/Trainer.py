@@ -72,10 +72,6 @@ class Trainer(object):
 
                 Y_depths = Y_depths.squeeze(1) #1xHxW -> HxW
                 Y_segmentations = Y_segmentations.squeeze(1) #1xHxW -> HxW
-                print("Y_segmentations", Y_depths.shape)
-                print("Y_depths", Y_depths.shape)
-                print("output_depths", output_depths.shape)
-                print("output_segmentations", output_segmentations.shape)
                 
                 # get loss
                 #loss = self.loss_depth(output_depths, Y_depths) + self.loss_depth(output_segmentations, Y_segmentations)
@@ -173,7 +169,7 @@ class Trainer(object):
         torch.save({'model_state_dict': self.model.state_dict(),
                     'optimizer_backbone_state_dict': self.optimizer_backbone.state_dict(),
                     'optimizer_scratch_state_dict': self.optimizer_scratch.state_dict()
-                    }, path_model)
+                    }, exportPath)
         print('Model saved at : {}'.format(exportPath))
 
     def img_logger(self, X, Y_depths, Y_segmentations, output_depths, output_segmentations):
