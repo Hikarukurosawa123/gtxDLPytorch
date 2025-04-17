@@ -15,3 +15,5 @@ ipykernel==6.29.5
 timm
 einops
 wandb
+scikit-image
+tensorboard

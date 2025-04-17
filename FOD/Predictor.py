@@ -33,7 +33,7 @@ class Predictor(object):
                     type        =   self.type,
                     patch_size  =   config['General']['patch_size'],
         )
-        path_model = os.path.join('ModelParameters', config['General']['path_model'], 'FocusOnDepth.p')
+        path_model = os.path.join('ModelParameters', config['General']['path_model'], self.model.__class__.__name__, 'Model.p')
         self.model.load_state_dict(
             torch.load(path_model, map_location=self.device)['model_state_dict']
         )
