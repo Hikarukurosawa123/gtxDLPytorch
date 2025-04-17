@@ -14,11 +14,11 @@ torch.manual_seed(0)
 class FocusOnDepth(nn.Module):
     def __init__(self,
                  image_size         = (8, 100, 100),
-                 patch_size         = 8,
+                 patch_size         = 4,
                  emb_dim            = 1024,
                  resample_dim       = 256,
                  read               = 'projection',
-                 num_layers_encoder = 24,
+                 num_layers_encoder = 100,
                  hooks              = [5, 11, 17, 23],
                  reassemble_s       = [4, 8, 16, 32],
                  transformer_dropout= 0.0,
