@@ -14,7 +14,7 @@ torch.manual_seed(0)
 class FocusOnDepth(nn.Module):
     def __init__(self,
                  image_size         = (8, 100, 100),
-                 patch_size         = 20,
+                 patch_size         = 8,
                  emb_dim            = 1024,
                  resample_dim       = 256,
                  read               = 'projection',
@@ -39,8 +39,7 @@ class FocusOnDepth(nn.Module):
         #Splitting img into patches
         channels, image_height, image_width = image_size
 
-        print("image size: ", image_size)
-        print("division remainder", image_height % patch_size)
+        
         assert image_height % patch_size == 0 and image_width % patch_size == 0, 'Image dimensions must be divisible by the patch size.'
         num_patches = (image_height // patch_size) * (image_width // patch_size)
         patch_dim = channels * patch_size * patch_size

@@ -36,16 +36,11 @@ class Fusion(nn.Module):
         if previous_stage == None:
             previous_stage = torch.zeros_like(x)
 
-        print("x shape, ", x.shape)
         output_stage1 = self.res_conv1(x)
-        print("output stage 1 shape, ", output_stage1.shape)
-        print("previous_stage shape, ", previous_stage.shape)
 
         output_stage1 += previous_stage
         output_stage2 = self.res_conv2(output_stage1)
-        print("output stage 2 shape, ", output_stage2.shape)
 
         output_stage2 = nn.functional.interpolate(output_stage2, scale_factor=2, mode="bilinear", align_corners=True)
-        print("output stage 2 shape, ", output_stage2.shape)
 
         return output_stage2
