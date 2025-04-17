@@ -156,15 +156,10 @@ class Trainer(object):
     def save_model(self):
         path_model = os.path.join(self.config['General']['path_model'], self.model.__class__.__name__)
         
-        os.makedirs("ModelParameters/"+path_model)
+        #craete new directory if it doesn't exist
+        if not os.path.isdir("ModelParameters/"+path_model):
+            os.makedirs("ModelParameters/"+path_model)
         exportPath = 'ModelParameters/'+path_model+ '/Model.p'
-
-        #save both the model and the state_dict 
-
-        #model_scripted = torch.jit.script(self.model) 
-
-        #model_scripted.save(exportPath) # Save
-
 
         torch.save({'model_state_dict': self.model.state_dict(),
                     'optimizer_backbone_state_dict': self.optimizer_backbone.state_dict(),
