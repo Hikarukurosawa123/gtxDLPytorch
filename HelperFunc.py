@@ -93,11 +93,9 @@ class Helper():
     def convert_background_val(self):
         self.DF = np.array(self.DF)
    
-        # for x in range(self.DF.shape[0]):
-        #     ind_zeros = self.DF[x, :,:] == 0
-        #     self.DF[x,ind_zeros] = self.background_val
-        self.DF = np.where(self.DF == 0, self.background_val, self.DF)
-
+        for x in range(self.DF.shape[0]):
+            ind_zeros = self.DF[x, :,:] == 0
+            self.DF[x,ind_zeros] = self.background_val
    
     def import_data_for_testing(self):
         
@@ -121,7 +119,7 @@ class Helper():
 
         #filter files 
         for file in files_in_s3:
-            if file.endswith((".pt")):
+            if file.endswith((".p")):
                 filename = "ModelParameters/"+ file 
                 
                 h5_files.append(filename)
