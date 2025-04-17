@@ -145,7 +145,10 @@ class Helper():
 
                 # Load the model from the temporary file
 
-                self.modelD = torch.load(tmp_file_path, weights_only = False)
+                self.modelD = torch.jit.load(tmp_file_path)
+                self.modelD.eval()
+
+                #self.modelD = torch.load(tmp_file_path, weights_only = False)
 
                 # Optionally, clean up the temporary file (if delete=False)
                 import os

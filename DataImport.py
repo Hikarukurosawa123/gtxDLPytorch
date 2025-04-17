@@ -20,12 +20,12 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class MyDataset(Dataset):
-    def __init__(self, images1, images2, labels1, labels2):
+    def __init__(self, images1,labels1, labels2):
 
         super().__init__()
 
         self.images1 = torch.tensor(images1, dtype=torch.float32)
-        self.images2 = torch.tensor(images2, dtype=torch.float32)
+        #self.images2 = torch.tensor(images2, dtype=torch.float32)
 
         self.labels1 = torch.tensor(labels1, dtype=torch.float32)
         self.labels2 = torch.tensor(labels2, dtype=torch.float32)
@@ -35,18 +35,24 @@ class MyDataset(Dataset):
 
     def __getitem__(self, idx):
         image1 = self.images1[idx]       # shape: [2, 101, 101]
-        image2 = self.images2[idx]       # shape: [6, 101, 101]
+        #image2 = self.images2[idx]       # shape: [6, 101, 101]
 
         label1 = self.labels1[idx]       # shape: [101, 101] # QF
         label2 = self.labels2[idx]       # shape: [101, 101] # QF
 
-        return image1,image2, label1, label2
+        return image1, label1, label2
 
 
 class Operations():
     
     def __init__(self):
-        pass
+        self.bucket = '20240909-hikaru'
+        
+        isCase = 'Default'#input('Choose a case:\n Default\n Default4fx')
+        self.case = isCase
+        self.params = self.Defaults(self.case) # Define some default parameters based on the selected case
+        self.isTesting = False
+        self.AWS = False        
       
 
         
@@ -401,9 +407,9 @@ class Operations():
         #display the model parameters available for export 
         keras_files = []
         for folder in os.listdir("ModelParameters"):
-            if not folder.endswith((".h5",".log",".xml", ".pt")):
+            if not folder.endswith((".h5",".log",".xml", ".p")):
                 for file in os.listdir("ModelParameters/"+folder):
-                    if file.endswith((".pt")):
+                    if file.endswith((".p")):
                         filename = "ModelParameters/"+folder+'/'+file
                         keras_files.append(filename)
                         print(filename)        
@@ -413,7 +419,8 @@ class Operations():
             loadFile = input('Enter the general and specific directory pertaining to the .keras (weights) file you would like to load: ')
             break 
 
-        
+        self.exportPath = filename
+
     
         pytorch_file_name = self.exportPath 
         self.upload_file(pytorch_file_name)
@@ -511,7 +518,7 @@ class Operations():
             # Track best performance, and save the model's state
             if avg_vloss < best_vloss:
                 best_vloss = avg_vloss
-                model_path = 'ModelParameters/'+self.exportName+'model_{}_{}'.format(timestamp, epoch_number)
+                model_path = 'ModelParameters/'+self.exportName+'/' +'model_{}_{}'.format(timestamp, epoch_number)
                 torch.save(self.modelD.state_dict(), model_path)
 
             epoch_number += 1
