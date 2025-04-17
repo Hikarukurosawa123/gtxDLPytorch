@@ -161,19 +161,19 @@ class Trainer(object):
         path_model = os.path.join(self.config['General']['path_model'], self.model.__class__.__name__)
         
         os.makedirs("ModelParameters/"+path_model)
-        exportPath = 'ModelParameters/'+path_model+ '/Model.pt'
+        exportPath = 'ModelParameters/'+path_model+ '/Model.p'
 
         #save both the model and the state_dict 
 
-        model_scripted = torch.jit.script(self.model) 
+        #model_scripted = torch.jit.script(self.model) 
 
-        model_scripted.save(exportPath) # Save
+        #model_scripted.save(exportPath) # Save
 
 
-        #torch.save({'model_state_dict': self.model.state_dict(),
-        #            'optimizer_backbone_state_dict': self.optimizer_backbone.state_dict(),
-        #            'optimizer_scratch_state_dict': self.optimizer_scratch.state_dict()
-        #            }, path_model+'.p')
+        torch.save({'model_state_dict': self.model.state_dict(),
+                    'optimizer_backbone_state_dict': self.optimizer_backbone.state_dict(),
+                    'optimizer_scratch_state_dict': self.optimizer_scratch.state_dict()
+                    }, path_model)
         print('Model saved at : {}'.format(exportPath))
 
     def img_logger(self, X, Y_depths, Y_segmentations, output_depths, output_segmentations):
