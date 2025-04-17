@@ -18,7 +18,7 @@ class FocusOnDepth(nn.Module):
                  emb_dim            = 1024,
                  resample_dim       = 256,
                  read               = 'projection',
-                 num_layers_encoder = 100,
+                 num_layers_encoder = 24,
                  hooks              = [5, 11, 17, 23],
                  reassemble_s       = [4, 8, 16, 32],
                  transformer_dropout= 0.0,
