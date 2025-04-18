@@ -14,7 +14,7 @@ torch.manual_seed(0)
 class FocusOnDepth(nn.Module):
     def __init__(self,
                  image_size         = (8, 100, 100),
-                 patch_size         = 4,
+                 patch_size         = 8,
                  emb_dim            = 1024,
                  resample_dim       = 256,
                  read               = 'projection',

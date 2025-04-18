@@ -22,16 +22,22 @@ class HeadDepth(nn.Module):
     def __init__(self, features):
         super(HeadDepth, self).__init__()
         self.head = nn.Sequential(
-            nn.Conv2d(features, features // 2, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(features, features // 2, kernel_size=3, stride=1, padding='same'),
             #Interpolate(scale_factor=2, mode="bilinear", align_corners=True),
-            nn.Conv2d(features // 2, 32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+
+            nn.Conv2d(features // 2, 32, kernel_size=3, stride=1, padding='same'),
+            nn.ReLU(),
+            nn.Conv2d(32, 1, kernel_size=3, stride=1, padding='same')
             # nn.ReLU()
             #nn.Sigmoid()
         )
     def forward(self, x):
+        print("x shape input: ", x.size())
+
         x = self.head(x)
+        print("x shape output: ", x.size())
+
         # x = (x - x.min())/(x.max()-x.min() + 1e-15)
         return x
 
