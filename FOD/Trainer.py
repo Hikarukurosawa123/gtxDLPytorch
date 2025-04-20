@@ -105,6 +105,8 @@ class Trainer(object):
             if new_val_loss < val_loss:
                 self.save_model()
                 val_loss = new_val_loss
+            
+            #reduceLRonplateau
 
             self.schedulers[0].step(new_val_loss)
             self.schedulers[1].step(new_val_loss)
