@@ -17,3 +17,4 @@ einops
 wandb
 scikit-image
 tensorboard
+opencv-python

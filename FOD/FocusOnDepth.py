@@ -74,7 +74,7 @@ class FocusOnDepth(nn.Module):
         #Head
         if type == "full":
             self.head_depth = HeadDepth(resample_dim)
-            self.head_segmentation = HeadSeg(resample_dim, nclasses=nclasses)
+            self.head_depth2 = HeadDepth(resample_dim)
         elif type == "depth":
             self.head_depth = HeadDepth(resample_dim)
             self.head_segmentation = None
@@ -99,12 +99,12 @@ class FocusOnDepth(nn.Module):
             fusion_result = self.fusions[i](reassemble_result, previous_stage)
             previous_stage = fusion_result
         out_depth = None
-        out_segmentation = None
+        out_depth2 = None
         if self.head_depth != None:
             out_depth = self.head_depth(previous_stage)
-        if self.head_segmentation != None:
-            out_segmentation = self.head_depth(previous_stage)
-        return out_depth, out_segmentation
+        if self.head_depth2 != None:
+            out_depth2 = self.head_depth2(previous_stage)
+        return out_depth, out_depth2
 
     def _get_layers_from_hooks(self, hooks):
         def get_activation(name):
