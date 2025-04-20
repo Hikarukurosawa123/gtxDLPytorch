@@ -11,7 +11,7 @@ from PIL import Image
 from FOD.FocusOnDepth import FocusOnDepth
 from FOD.utils import create_dir
 from FOD.dataset import show
-
+import matplotlib
 
 class Predictor(object):
     def __init__(self, config, input_images):
@@ -46,6 +46,15 @@ class Predictor(object):
         self.output_dir = self.config['General']['path_predicted_images']
         create_dir(self.output_dir)
 
+
+    def get_min(self, DF):
+
+        DF_zeros = np.array(DF)
+
+        DF_min_per_case = np.nanmin(DF_zeros, axis = (1,2))
+
+        return DF_min_per_case
+
     def run(self):
         with torch.no_grad():
             
@@ -72,12 +81,93 @@ class Predictor(object):
             DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[2], DF_P.shape[3]))
             QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[2], QF_P.shape[3]))
         
+            # Average error
+        
+            DF_error = DF_P - self.DF
+            QF_error = QF_P - self.QF
+            DF_erroravg = np.mean(abs(DF_error[self.indxIncl]))
+            DF_errorstd = np.std(abs(DF_error[self.indxIncl]))
+            QF_erroravg = np.mean(abs(QF_error[self.indxIncl]))
+            QF_errorstd = np.std(abs(QF_error[self.indxIncl]))
+            print('Average Depth Error (SD): {}({}) mm'.format(float('%.5g' % DF_erroravg),float('%.5g' % DF_errorstd)))
+            print('Average Concentration Error (SD): {}({}) ug/mL'.format(float('%.5g' % QF_erroravg),float('%.5g' % QF_errorstd)))
+            # Overall  mean squared error
+            DF_mse = np.sum((DF_P - self.DF) ** 2)
+            DF_mse /= float(DF_P.shape[0] * DF_P.shape[1] * DF_P.shape[2])
+            QF_mse = np.sum((QF_P - self.QF) ** 2)
+            QF_mse /= float(QF_P.shape[0] * QF_P.shape[1] * QF_P.shape[2])
+            print('Depth Mean Squared Error: {} mm'.format(float('%.5g' % DF_mse)))
+            print('Concentration Mean Squared Error: {} ug/mL'.format(float('%.5g' % QF_mse)))
 
-            QF_error = abs(self.QF - QF_P)
-            DF_error = abs(self.DF - DF_P)
 
-            print("DF_P", DF_P.shape)
-            print("QF_P", QF_P.shape)
+            # Max and Min values per sample
+
+            DF_min = self.get_min(self.DF)
+            DFP_min = self.get_min(DF_P)
+                
+            DF_min = np.array(DF_min)
+            DFP_min = np.array(DFP_min)
+
+            #compute absolute mindepth error 
+            min_depth_error = np.mean(np.abs(DFP_min - DF_min))
+            min_depth_error_std = np.std(np.abs(DFP_min - DF_min))
+            print("Average Minimum Depth Error (SD) : {min_depth_error} ({min_depth_error_std})".format(min_depth_error = min_depth_error, min_depth_error_std = min_depth_error_std))
+
+            
+            #num_predict_zeros = self.count_predictions_of_zero(DFP_min)
+            #print("number of predictions of zero:", num_predict_zeros)
+            # SSIM per sample
+            DF_ssim =[]
+            QF_ssim =[]
+            
+            ## Plot Correlations
+            
+            fig, (plt1, plt2) = plt.subplots(1, 2)
+            
+            plt1.scatter(self.DF[self.indxIncl],DF_P[self.indxIncl],s=1)
+            plt1.set_xlim([-5, 15])
+            plt1.set_ylim([-5, 15])
+            y_lim1 = plt1.set_ylim()
+            x_lim1 = plt1.set_xlim()
+            plt1.plot(x_lim1, y_lim1,color='k')
+            plt1.set_ylabel("Predicted Depth (mm)")
+            plt1.set_xlabel("True Depth (mm)")
+            plt2.scatter(self.QF[self.indxIncl],QF_P[self.indxIncl],s=1)
+            plt2.set_xlim([0, 10])
+            plt2.set_ylim([0, 10])
+            plt2.set_ylabel("Predicted Concentration (ug/mL)")
+            plt2.set_xlabel("True Concentration (ug/mL)")
+            plt.tight_layout()
+           
+            plt.show()
+        
+
+
+            min_depth_graph = plt.figure()
+            
+            plt.scatter(DF_min,DFP_min,s=3, label =  "Correct Classification", color = ['blue'])
+
+            DF_min_classify = np.array(DF_min) < 5 
+            DFP_min_classify = np.array(DFP_min) < 5
+            
+            failed_result = DF_min_classify !=DFP_min_classify
+            failed_result = np.squeeze(failed_result)
+            print(np.shape(failed_result))
+            
+            plt.scatter(DF_min[failed_result],DFP_min[failed_result],label = "Incorrect Classification", s=3, color = ['red'])
+            plt.legend(loc="upper left", prop={'size': 13, 'weight':'bold'})
+
+            plt.xlim([0, 10])
+            plt.ylim([0, 10])
+            plt.plot(plt.xlim([0, 10]), plt.ylim([0, 10]),color='k')
+            plt.ylabel("Predicted Depth (mm)")
+            plt.xlabel("True Depth (mm)")
+            plt.title("Minimum Depth")
+            plt.tight_layout()
+            font = {'weight': 'bold', 'size':12}
+            matplotlib.rc('font', **font)
+
+            min_depth_graph.show()
 
 
             for i in range(self.DF.shape[0]):
