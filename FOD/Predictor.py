@@ -81,14 +81,12 @@ class Predictor(object):
             DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[2], DF_P.shape[3]))
             QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[2], QF_P.shape[3]))
         
+            # Average error
+        
+            DF_error = DF_P - self.DF
+            QF_error = QF_P - self.QF
 
-            QF_error = abs(self.QF - QF_P)
-            DF_error = abs(self.DF - DF_P)
 
-
-
-            print("DF_P", DF_P.shape)
-            print("QF_P", QF_P.shape)
 
             # Max and Min values per sample
 
@@ -102,35 +100,6 @@ class Predictor(object):
             min_depth_error = np.mean(np.abs(DFP_min - DF_min))
             min_depth_error_std = np.std(np.abs(DFP_min - DF_min))
             print("Average Minimum Depth Error (SD) : {min_depth_error} ({min_depth_error_std})".format(min_depth_error = min_depth_error, min_depth_error_std = min_depth_error_std))
-
-            
-            #num_predict_zeros = self.count_predictions_of_zero(DFP_min)
-            #print("number of predictions of zero:", num_predict_zeros)
-            # SSIM per sample
-            DF_ssim =[]
-            QF_ssim =[]
-            
-            ## Plot Correlations
-            
-            fig, (plt1, plt2) = plt.subplots(1, 2)
-            
-            plt1.scatter(self.DF[self.indxIncl],DF_P[self.indxIncl],s=1)
-            plt1.set_xlim([-5, 15])
-            plt1.set_ylim([-5, 15])
-            y_lim1 = plt1.set_ylim()
-            x_lim1 = plt1.set_xlim()
-            plt1.plot(x_lim1, y_lim1,color='k')
-            plt1.set_ylabel("Predicted Depth (mm)")
-            plt1.set_xlabel("True Depth (mm)")
-            plt2.scatter(self.QF[self.indxIncl],QF_P[self.indxIncl],s=1)
-            plt2.set_xlim([0, 10])
-            plt2.set_ylim([0, 10])
-            plt2.set_ylabel("Predicted Concentration (ug/mL)")
-            plt2.set_xlabel("True Concentration (ug/mL)")
-            plt.tight_layout()
-           
-            plt.show()
-        
 
 
             min_depth_graph = plt.figure()
