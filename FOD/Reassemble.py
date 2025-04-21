@@ -100,7 +100,7 @@ class Reassemble(nn.Module):
             self.read = Read_projection(emb_dim)
 
         #Concat after read
-        self.concat = Rearrange('b (h w ch) c -> b c h w',
+        self.concat = Rearrange('b (h w ch) c -> b (c ch) h w',
                                 c=emb_dim,
                                 h=(image_height // p),
                                 w=(image_width // p),
