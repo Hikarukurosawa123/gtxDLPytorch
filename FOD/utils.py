@@ -94,4 +94,4 @@ def get_optimizer(config, net):
     return optimizer_backbone, optimizer_scratch
 
 def get_schedulers(optimizers):
-    return [ReduceLROnPlateau(optimizer) for optimizer in optimizers]
+    return [ReduceLROnPlateau(optimizer, patience=5) for optimizer in optimizers]
