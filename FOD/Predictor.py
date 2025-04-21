@@ -81,24 +81,14 @@ class Predictor(object):
             DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[2], DF_P.shape[3]))
             QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[2], QF_P.shape[3]))
         
-            # Average error
-        
-            DF_error = DF_P - self.DF
-            QF_error = QF_P - self.QF
-            DF_erroravg = np.mean(abs(DF_error[self.indxIncl]))
-            DF_errorstd = np.std(abs(DF_error[self.indxIncl]))
-            QF_erroravg = np.mean(abs(QF_error[self.indxIncl]))
-            QF_errorstd = np.std(abs(QF_error[self.indxIncl]))
-            print('Average Depth Error (SD): {}({}) mm'.format(float('%.5g' % DF_erroravg),float('%.5g' % DF_errorstd)))
-            print('Average Concentration Error (SD): {}({}) ug/mL'.format(float('%.5g' % QF_erroravg),float('%.5g' % QF_errorstd)))
-            # Overall  mean squared error
-            DF_mse = np.sum((DF_P - self.DF) ** 2)
-            DF_mse /= float(DF_P.shape[0] * DF_P.shape[1] * DF_P.shape[2])
-            QF_mse = np.sum((QF_P - self.QF) ** 2)
-            QF_mse /= float(QF_P.shape[0] * QF_P.shape[1] * QF_P.shape[2])
-            print('Depth Mean Squared Error: {} mm'.format(float('%.5g' % DF_mse)))
-            print('Concentration Mean Squared Error: {} ug/mL'.format(float('%.5g' % QF_mse)))
 
+            QF_error = abs(self.QF - QF_P)
+            DF_error = abs(self.DF - DF_P)
+
+
+
+            print("DF_P", DF_P.shape)
+            print("QF_P", QF_P.shape)
 
             # Max and Min values per sample
 
