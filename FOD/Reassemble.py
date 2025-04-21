@@ -100,16 +100,20 @@ class Reassemble(nn.Module):
             self.read = Read_projection(emb_dim)
 
         #Concat after read
-        self.concat = Rearrange('b (h w) c -> b c h w',
+        self.concat = Rearrange('b (h w ch) c -> b c h w',
                                 c=emb_dim,
                                 h=(image_height // p),
-                                w=(image_width // p))
+                                w=(image_width // p),
+                                ch = channels)
+
 
         #Projection + Resample
         self.resample = Resample(p, s, image_height, emb_dim, resample_dim)
 
     def forward(self, x):
         x = self.read(x)
+
+        print("x size:", x.size())
         x = self.concat(x)
         x = self.resample(x)
         return x
