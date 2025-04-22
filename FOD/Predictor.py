@@ -70,7 +70,7 @@ class Predictor(object):
             #pil_im = Image.open(images)
             #original_size = pil_im.size
 
-            self.indxIncl = np.where(self.DF == 10)
+            self.indxIncl = np.where(self.DF != 10)
 
 
             self.model.eval()
