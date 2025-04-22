@@ -15,7 +15,7 @@ class FocusOnDepth(nn.Module):
     def __init__(self,
                  image_size         = (8, 100, 100),
                  patch_size         = 8,
-                 emb_dim            = 384,
+                 emb_dim            = 1024,
                  resample_dim       = 256,
                  read               = 'projection',
                  num_layers_encoder = 24,
@@ -44,10 +44,12 @@ class FocusOnDepth(nn.Module):
 
         
         assert image_height % patch_size == 0 and image_width % patch_size == 0, 'Image dimensions must be divisible by the patch size.'
-        num_patches = (image_height // patch_size) * (image_width // patch_size) * channels
+        num_patches = (image_height // patch_size) * (image_width // patch_size) #* channels
         patch_dim = patch_size * patch_size
         self.to_patch_embedding = nn.Sequential(
-            Rearrange('b c (h p1) (w p2) -> b (c h w) (p1 p2)', p1=patch_size, p2=patch_size),
+            #Rearrange('b c (h p1) (w p2) -> b (c h w) (p1 p2)', p1=patch_size, p2=patch_size),
+            Rearrange('b c (h p1) (w p2) -> b (h w) (c p1 p2)', p1=patch_size, p2=patch_size),
+            
             nn.Linear(patch_dim, emb_dim),
         )
         #Embedding
