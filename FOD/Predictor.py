@@ -60,6 +60,10 @@ class Predictor(object):
             
             #for images in self.input_images:
 
+            #find background regions 
+            #self.indxIncl = self.temp_DF_pre_conversion
+            self.indxIncl = np.where(self.temp_DF_pre_conversion == 10)
+
             Images, self.QF, self.DF = self.input_images
 
             if Images.ndim == 3:
@@ -80,13 +84,16 @@ class Predictor(object):
             DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[2], DF_P.shape[3]))
             QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[2], QF_P.shape[3]))
         
-            # Average error
-        
+            # Average error    
             DF_error = DF_P - self.DF
             QF_error = QF_P - self.QF
-
-
-
+            DF_erroravg = np.mean(abs(DF_error[self.indxIncl]))
+            DF_errorstd = np.std(abs(DF_error[self.indxIncl]))
+            QF_erroravg = np.mean(abs(QF_error[self.indxIncl]))
+            QF_errorstd = np.std(abs(QF_error[self.indxIncl]))
+            print('Average Depth Error (SD): {}({}) mm'.format(float('%.5g' % DF_erroravg),float('%.5g' % DF_errorstd)))
+            print('Average Concentration Error (SD): {}({}) ug/mL'.format(float('%.5g' % QF_erroravg),float('%.5g' % QF_errorstd)))
+            
             # Max and Min values per sample
 
             DF_min = self.get_min(self.DF)

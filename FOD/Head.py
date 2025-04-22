@@ -33,11 +33,7 @@ class HeadDepth(nn.Module):
             #nn.Sigmoid()
         )
     def forward(self, x):
-        print("x shape input: ", x.size())
-
         x = self.head(x)
-        print("x shape output: ", x.size())
-
         # x = (x - x.min())/(x.max()-x.min() + 1e-15)
         return x
 
