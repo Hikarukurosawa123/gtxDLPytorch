@@ -67,8 +67,7 @@ class Predictor(object):
             #pil_im = Image.open(images)
             #original_size = pil_im.size
 
-            print(Images.size())
-
+            self.model.eval()
             #tensor_im = self.transform_image(pil_im).unsqueeze(0)
             predict = self.model(Images)
 
