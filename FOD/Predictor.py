@@ -104,6 +104,9 @@ class Predictor(object):
             DF_min = np.array(DF_min)
             DFP_min = np.array(DFP_min)
 
+            print("Ground truth:", DF_min)
+            print("prediction: ", DFP_min)
+
             #compute absolute mindepth error 
             min_depth_error = np.mean(np.abs(DFP_min - DF_min))
             min_depth_error_std = np.std(np.abs(DFP_min - DF_min))
