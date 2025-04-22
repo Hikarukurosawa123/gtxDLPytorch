@@ -62,7 +62,6 @@ class Predictor(object):
 
             #find background regions 
             #self.indxIncl = self.temp_DF_pre_conversion
-            self.indxIncl = np.where(self.temp_DF_pre_conversion == 10)
 
             Images, self.QF, self.DF = self.input_images
 
@@ -70,6 +69,9 @@ class Predictor(object):
                 Images = Images.unsqueeze(0)  # add batch dimension: [1, 2, 101, 101]
             #pil_im = Image.open(images)
             #original_size = pil_im.size
+
+            self.indxIncl = np.where(self.DF == 10)
+
 
             self.model.eval()
             #tensor_im = self.transform_image(pil_im).unsqueeze(0)
