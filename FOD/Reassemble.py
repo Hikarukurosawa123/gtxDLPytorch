@@ -51,7 +51,7 @@ class Resample(nn.Module):
     def __init__(self, p, s, h, emb_dim, resample_dim):
         super(Resample, self).__init__()
         assert (s in [4, 8, 16, 32]), "s must be in [0.5, 4, 8, 16, 32]"
-        num_channels = 1
+        num_channels = 8
         self.conv1 = nn.Conv2d(emb_dim * num_channels, resample_dim, kernel_size=1, stride=1, padding=0)
         if s == 4:
             self.conv2 = nn.ConvTranspose2d(resample_dim,
@@ -101,10 +101,11 @@ class Reassemble(nn.Module):
             self.read = Read_projection(emb_dim)
 
         #Concat after read
-        self.concat = Rearrange('b (h w) c -> b c h w',
+        self.concat = Rearrange('b (h w ch) c -> b c h w',
                                 c=emb_dim,
                                 h=(image_height // p),
-                                w=(image_width // p))
+                                w=(image_width // p), 
+                                ch = channels)
 
 
         #Projection + Resample
