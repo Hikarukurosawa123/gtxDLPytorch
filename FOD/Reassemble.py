@@ -102,11 +102,11 @@ class Reassemble(nn.Module):
 
         #Concat after read
         
-        self.concat = Rearrange('b h w c -> b c h w',
+        self.concat = Rearrange('b (h w) c -> b c h w',
                                 c=emb_dim,
                                 h=(image_height // p),
                                 w=(image_width // p), 
-                                ch = channels)
+                                )
 
 
         #Projection + Resample
