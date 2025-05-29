@@ -114,10 +114,16 @@ class FocusOnDepth(nn.Module):
         return out_depth, out_depth2
 
     def _get_layers_from_hooks(self, hooks):
-        def get_activation(name):
-            def hook(model, input, output):
-                self.activation[name] = output
-            return hook
+        # Store hook handles to remove later (optional but good practice)
+        self.hook_handles = []
+        
         for h in hooks:
-            self.transformer_encoders.layers[h].register_forward_hook(get_activation('t'+str(h)))
-            #self.transformer_encoders.blocks[h].register_forward_hook(get_activation('t'+str(h)))
+            layer_name = f"t{h}"
+
+            def make_hook(name):  # avoid closure capturing issue
+                def hook(model, input, output):
+                    self.activation[name] = output.detach()
+                return hook
+
+            handle = self.transformer_encoders.layers[h].register_forward_hook(make_hook(layer_name))
+            self.hook_handles.append(handle)
