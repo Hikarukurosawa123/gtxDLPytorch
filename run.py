@@ -4,8 +4,9 @@ from FOD.Predictor import Predictor
 from main import DL
 import numpy as np 
 import torch
-with open('config.json', 'r') as f:
-    config = json.load(f)
+import os 
+#with open('config.json', 'r') as f:
+#    config = json.load(f)
 
 #input_images = glob('input/*.jpg') + glob('input/*.png')
 
@@ -45,6 +46,21 @@ testing_label_DF = torch.tensor(testing_label_DF, dtype=torch.float32)
 
 testing_set =  (testing_image_concat, testing_label_QF, testing_label_DF)# MyDataset(testing_image_concat,testing_label_QF, testing_label_DF)
 
+#select the model to be running 
 
-predictor = Predictor(config, testing_set)
+#display the model parameters available for export 
+pt_files = []
+for folder in os.listdir("ModelParameters"):
+    #if not folder.endswith((".keras")):
+    for file in os.listdir("ModelParameters/"+folder):
+        if file.endswith((".p", ".pt")):
+            filename = "ModelParameters/"+folder+'/'+file
+            pt_files.append(filename)
+
+print(pt_files)
+while True:
+    loadFile = input('Enter the general and specific directory pertaining to the .keras (weights) file you would like to load: ')
+    break 
+
+predictor = Predictor(loadFile, testing_set)
 predictor.run()

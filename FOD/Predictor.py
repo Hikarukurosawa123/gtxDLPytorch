@@ -12,10 +12,21 @@ from FOD.FocusOnDepth import FocusOnDepth
 from FOD.utils import create_dir
 from FOD.dataset import show
 import matplotlib
+import json 
+
 
 class Predictor(object):
-    def __init__(self, config, input_images):
+    def __init__(self, loadFile, input_images):
         self.input_images = input_images
+
+        #check if config file is present inside 
+
+        if 'config' in torch.load(loadFile):
+            config = torch.load(loadFile)['config']
+        else: 
+            with open('config.json', 'r') as f:
+                config = json.load(f)
+
         self.config = config
         self.type = self.config['General']['type']
 
@@ -33,10 +44,13 @@ class Predictor(object):
                     type        =   self.type,
                     patch_size  =   config['General']['patch_size'],
         )
-        path_model = os.path.join('ModelParameters', config['General']['path_model'], self.model.__class__.__name__, 'Model.p')
+        #path_model = os.path.join('ModelParameters', config['General']['path_model'], self.model.__class__.__name__, 'Model.p')
         self.model.load_state_dict(
-            torch.load(path_model, map_location=self.device)['model_state_dict']
+            torch.load(loadFile, map_location=self.device)['model_state_dict']
         )
+
+        #load the config file from the specified path 
+
         self.model.eval()
         self.transform_image = transforms.Compose([
             transforms.Resize((resize, resize)),

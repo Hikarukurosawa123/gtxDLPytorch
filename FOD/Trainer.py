@@ -161,11 +161,12 @@ class Trainer(object):
         #craete new directory if it doesn't exist
         if not os.path.isdir("ModelParameters/"+path_model):
             os.makedirs("ModelParameters/"+path_model)
-        exportPath = 'ModelParameters/'+path_model+ '/Model.p'
+        exportPath = 'ModelParameters/'+path_model + '.p'
 
         torch.save({'model_state_dict': self.model.state_dict(),
                     'optimizer_backbone_state_dict': self.optimizer_backbone.state_dict(),
-                    'optimizer_scratch_state_dict': self.optimizer_scratch.state_dict()
+                    'optimizer_scratch_state_dict': self.optimizer_scratch.state_dict(),
+                    'config': self.config
                     }, exportPath)
         print('Model saved at : {}'.format(exportPath))
 
