@@ -119,7 +119,7 @@ class Helper():
 
         #filter files 
         for file in files_in_s3:
-            if file.endswith((".p")):
+            if file.endswith((".pt")):
                 filename = "ModelParameters/"+ file 
                 
                 h5_files.append(filename)
