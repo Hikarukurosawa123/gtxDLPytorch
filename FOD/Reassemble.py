@@ -52,7 +52,7 @@ class Resample(nn.Module):
         super(Resample, self).__init__()
         assert (s in [4, 8, 16, 32]), "s must be in [0.5, 4, 8, 16, 32]"
         num_channels = 8
-        self.conv1 = nn.Conv2d(emb_dim * num_channels, resample_dim, kernel_size=1, stride=1, padding=0)
+        self.conv1 = nn.Conv2d(emb_dim, resample_dim, kernel_size=1, stride=1, padding=0)
         if s == 4:
             self.conv2 = nn.ConvTranspose2d(resample_dim,
                                 resample_dim,
