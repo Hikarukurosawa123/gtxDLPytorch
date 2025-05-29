@@ -32,6 +32,7 @@ class Trainer(object):
                     model_timm  =   config['General']['model_timm'],
                     type        =   self.type,
                     patch_size  =   config['General']['patch_size'],
+                    config = config
         )
 
         self.model.to(self.device)
@@ -161,13 +162,9 @@ class Trainer(object):
         #craete new directory if it doesn't exist
         if not os.path.isdir("ModelParameters/"+path_model):
             os.makedirs("ModelParameters/"+path_model)
-        exportPath = 'ModelParameters/'+path_model + '.p'
+        exportPath = 'ModelParameters/'+path_model + '.pt'
 
-        torch.save({'model_state_dict': self.model.state_dict(),
-                    'optimizer_backbone_state_dict': self.optimizer_backbone.state_dict(),
-                    'optimizer_scratch_state_dict': self.optimizer_scratch.state_dict(),
-                    'config': self.config
-                    }, exportPath)
+        torch.save(self.model, exportPath)
         print('Model saved at : {}'.format(exportPath))
 
     def img_logger(self, X, Y_depths, Y_segmentations, output_depths, output_segmentations):

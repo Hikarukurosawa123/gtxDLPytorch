@@ -24,7 +24,8 @@ class FocusOnDepth(nn.Module):
                  transformer_dropout= 0.0,
                  nclasses           = 2,
                  type               = "full",
-                 model_timm         = "vit_large_patch16_384"):
+                 model_timm         = "vit_large_patch16_384",
+                 config = None):
         """
         Focus on Depth
         type : {"full", "depth", "segmentation"}

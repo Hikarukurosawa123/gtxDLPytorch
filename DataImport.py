@@ -149,24 +149,23 @@ class Operations():
         #determine where to import testing/training data from 
         s3_client = boto3.client('s3')
 
-        
-        # Ask user to input if they are testing are not - indicates if you need to flip
-        if isTesting == True:
-            # Print out the contents of the bucket (i.e., options for importing)           
-            for key in s3_client.list_objects_v2(Bucket=self.bucket)['Contents']: 
-                data = key['Key']
-                # Display only matlab files
-                if data.find("TestingData")!=-1:
-                    if data.find(".mat")!=-1:
-                        print(data)
-        else:
-            isTesting = False
-            for key in s3_client.list_objects_v2(Bucket=self.bucket)['Contents']: 
-                data = key['Key']
-                # Display only matlab files
-                if data.find("TrainingData")!=-1:
-                    if data.find(".mat")!=-1:
-                        print(data)
+        mode = "TestingData" if isTesting else "TrainingData"
+
+        try:
+            response = s3_client.list_objects_v2(Bucket=self.bucket, Prefix=mode)
+            if 'Contents' not in response:
+                print("No files found in the bucket.")
+                return
+
+            print(f"Listing .mat files for: {mode}")
+            for item in response['Contents']:
+                key = item['Key']
+
+                if key.endswith(".mat"):
+                    print(key)
+
+        except Exception as e:
+            print(f"Error accessing S3 bucket: {e}")
 
         # Enter the name of the dataset you want to import
         # Note: To import new data, go to the desired bucket in AWS and upload data
