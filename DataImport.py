@@ -409,7 +409,7 @@ class Operations():
             if not folder.endswith((".h5",".log",".xml", ".pt")):
                 for file in os.listdir("ModelParameters/"+folder):
                     if file.endswith((".pt")):
-                        filename = "ModelParameters/"+folder+'/'+file
+                        filename = "ModelParameters_PT/"+folder+'/'+file
                         keras_files.append(filename)
                         print(filename)        
         
