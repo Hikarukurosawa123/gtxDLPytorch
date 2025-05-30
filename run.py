@@ -109,6 +109,10 @@ def run(model, input_images):
     with torch.no_grad():
         Images, QF, DF = input_images
 
+        Images = Images.to(device)
+        QF = QF.to(device)
+        DF = DF.to(device)
+
         if Images.ndim == 3:
             Images = Images.unsqueeze(0)  # Add batch dimension
 
