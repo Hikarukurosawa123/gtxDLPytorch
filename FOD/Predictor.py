@@ -32,34 +32,15 @@ class Predictor(object):
 
         self.device = torch.device(self.config['General']['device'] if torch.cuda.is_available() else "cpu")
         print("device: %s" % self.device)
-        resize = config['Dataset']['transforms']['resize']
-        self.model = FocusOnDepth(
-                    image_size  =   (8,resize,resize),
-                    emb_dim     =   config['General']['emb_dim'],
-                    resample_dim=   config['General']['resample_dim'],
-                    read        =   config['General']['read'],
-                    nclasses    =   len(config['Dataset']['classes']) + 1,
-                    hooks       =   config['General']['hooks'],
-                    model_timm  =   config['General']['model_timm'],
-                    type        =   self.type,
-                    patch_size  =   config['General']['patch_size'],
-        )
-        #path_model = os.path.join('ModelParameters', config['General']['path_model'], self.model.__class__.__name__, 'Model.p')
         
+        torch.serialization.add_safe_globals([FocusOnDepth])
+
         self.model = torch.load(loadFile, weights_only=False)
     
-
-
         #load the config file from the specified path 
 
         self.model.eval()
-        self.transform_image = transforms.Compose([
-            transforms.Resize((resize, resize)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        ])
-        self.output_dir = self.config['General']['path_predicted_images']
-        create_dir(self.output_dir)
+       
 
 
     def get_min(self, DF):
