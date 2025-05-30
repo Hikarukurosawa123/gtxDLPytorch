@@ -19,7 +19,7 @@ class ActivationHook:
         self.model_ref.activation[self.name] = output.detach()
 class FocusOnDepth(nn.Module):
     def __init__(self,
-                 image_size         = (8, 100, 100),
+                 image_size         = (56, 100, 100),
                  patch_size         = 8,
                  emb_dim            = 384,
                  resample_dim       = 256,
@@ -110,7 +110,7 @@ class FocusOnDepth(nn.Module):
         params['kernelConv2D'] = (3,3)
         params['strideConv2D'] = (1,1)
         params['kernelResBlock2D'] = (3,3)
-
+        params['activation'] = 'relu'
 
         #define 3D CNN and 2D CNN for OP and FL 
         nf2d = params['nFilters2D'] = 8
