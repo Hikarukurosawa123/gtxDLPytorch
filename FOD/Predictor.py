@@ -46,8 +46,9 @@ class Predictor(object):
         )
         #path_model = os.path.join('ModelParameters', config['General']['path_model'], self.model.__class__.__name__, 'Model.p')
         self.model.load_state_dict(
-            torch.load(loadFile, map_location=self.device)['model_state_dict']
+            torch.load(loadFile, weights_only=False)
         )
+
 
         #load the config file from the specified path 
 
