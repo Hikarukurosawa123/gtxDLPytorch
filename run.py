@@ -50,11 +50,11 @@ testing_set =  (testing_image_concat, testing_label_QF, testing_label_DF)# MyDat
 
 #display the model parameters available for export 
 pt_files = []
-for folder in os.listdir("ModelParameters"):
+for folder in os.listdir("ModelParameters_PT"):
     #if not folder.endswith((".keras")):
-    for file in os.listdir("ModelParameters/"+folder):
-        if file.endswith((".p", ".pt")):
-            filename = "ModelParameters/"+folder+'/'+file
+    for file in os.listdir("ModelParameters_PT/"+folder):
+        if file.endswith((".pt")):
+            filename = "ModelParameters_PT/"+folder+'/'+file
             pt_files.append(filename)
 
 print(pt_files)
