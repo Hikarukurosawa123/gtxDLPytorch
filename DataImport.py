@@ -405,9 +405,9 @@ class Operations():
     
         #display the model parameters available for export 
         keras_files = []
-        for folder in os.listdir("ModelParameters"):
+        for folder in os.listdir("ModelParameters_PT"):
             if not folder.endswith((".h5",".log",".xml", ".pt")):
-                for file in os.listdir("ModelParameters/"+folder):
+                for file in os.listdir("ModelParameters_PT/"+folder):
                     if file.endswith((".pt")):
                         filename = "ModelParameters_PT/"+folder+'/'+file
                         keras_files.append(filename)
@@ -485,8 +485,8 @@ class Operations():
         loss_fn = torch.nn.L1Loss()
 
         #specify the save path 
-        os.makedirs("ModelParameters/"+self.exportName)
-        self.exportPath = 'ModelParameters/'+self.exportName+'/'+self.case + '.pt'
+        os.makedirs("ModelParameters_PT/"+self.exportName)
+        self.exportPath = 'ModelParameters_PT/'+self.exportName+'/'+self.case + '.pt'
 
         #define the model and train 
         self.train_and_validate(validation_loader, loss_fn, training_loader)
