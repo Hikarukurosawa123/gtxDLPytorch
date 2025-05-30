@@ -22,8 +22,10 @@ class Trainer(object):
         print("device: %s" % self.device)
         resize = config['Dataset']['transforms']['resize']
         print("resize", resize)
+
+        num_channel_after_concat = 56
         self.model = FocusOnDepth(
-                    image_size  =   (8,resize,resize),
+                    image_size  =   (num_channel_after_concat,resize,resize),
                     emb_dim     =   config['General']['emb_dim'],
                     resample_dim=   config['General']['resample_dim'],
                     read        =   config['General']['read'],
