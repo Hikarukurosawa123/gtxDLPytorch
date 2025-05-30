@@ -117,6 +117,7 @@ class Helper():
         s3_bucket = s3.Bucket(bucket)
         files_in_s3 = [f.key.split(folder + "/")[1] for f in s3_bucket.objects.filter(Prefix=folder).all()]
 
+
         #filter files 
         for file in files_in_s3:
             if file.endswith((".pt")):
@@ -145,7 +146,7 @@ class Helper():
 
                 # Load the model from the temporary file
 
-                self.modelD = torch.load(tmp_file_path)
+                self.modelD = torch.load(tmp_file_path, weights_only=False)
                 self.modelD.eval()
 
                 #self.modelD = torch.load(tmp_file_path, weights_only = False)

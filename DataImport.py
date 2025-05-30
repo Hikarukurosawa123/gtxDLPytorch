@@ -406,9 +406,9 @@ class Operations():
         #display the model parameters available for export 
         keras_files = []
         for folder in os.listdir("ModelParameters"):
-            if not folder.endswith((".h5",".log",".xml", ".p")):
+            if not folder.endswith((".h5",".log",".xml", ".pt")):
                 for file in os.listdir("ModelParameters/"+folder):
-                    if file.endswith((".p")):
+                    if file.endswith((".pt")):
                         filename = "ModelParameters/"+folder+'/'+file
                         keras_files.append(filename)
                         print(filename)        
@@ -428,104 +428,7 @@ class Operations():
         print("file uploaded to AWS")
 
     
-    def train_one_epoch(self,epoch_index, tb_writer, loss_fn, training_loader, optimizer):
-        running_loss = 0.
-        last_loss = 0.
-
-        # Here, we use enumerate(training_loader) instead of
-        # iter(training_loader) so that we can track the batch
-        # index and do some intra-epoch reporting
-        for i, data in enumerate(training_loader):
-            # Every data instance is an input + label pair
-
-            print(type(data), len(data))
-
-            inputs1, inputs2, labels1, labels2 = data
-
-            # Zero your gradients for every batch!
-            optimizer.zero_grad()
-
-            # Make predictions for this batch
-            outputs1, outputs2 = self.modelD(inputs1, inputs2)
-
-            # Compute the loss and its gradients
-            loss = loss_fn(outputs1, labels1)  + loss_fn(outputs2, labels2)
-            loss.backward()
-
-
-            # Adjust learning weights
-            optimizer.step()
-
-            # Gather data and report
-            running_loss += loss.item()
-            if i % 1000 == 999:
-                last_loss = running_loss / 1000 # loss per batch
-                print('  batch {} loss: {}'.format(i + 1, last_loss))
-                tb_x = epoch_index * len(training_loader) + i + 1
-                tb_writer.add_scalar('Loss/train', last_loss, tb_x)
-                running_loss = 0.
-
-        return last_loss
     
-    def train_and_validate(self, validation_loader, loss_fn, training_loader):
-        # Initializing in a separate cell so we can easily add more epochs to the same run
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        writer = SummaryWriter('runs/fashion_trainer_{}'.format(timestamp))
-        epoch_number = 0
-
-        EPOCHS =1
-
-        best_vloss = 1_000_000
-
-        #define model, optimizer, training_loader 
-        self.Model_pt()
-        optimizer = torch.optim.SGD(self.modelD.parameters(), lr=0.001, momentum=0.9)
-
-
-        for epoch in range(EPOCHS):
-            print('EPOCH {}:'.format(epoch_number + 1))
-
-            # Make sure gradient tracking is on, and do a pass over the data
-            self.modelD.train(True)
-            avg_loss = self.train_one_epoch(epoch_number, writer, loss_fn, training_loader, optimizer)
-
-
-            running_vloss = 0.0
-            # Set the model to evaluation mode, disabling dropout and using population
-            # statistics for batch normalization.
-            self.modelD.eval()
-
-            # Disable gradient computation and reduce memory consumption.
-            with torch.no_grad():
-                for i, vdata in enumerate(validation_loader):
-
-                    vinputs1, vinputs2, vlabels1, vlabels2 = vdata
-                    voutputs1, voutputs2 = self.modelD(vinputs1, vinputs2)
-                    vloss = loss_fn(voutputs1, vlabels1) + loss_fn(voutputs2, vlabels2)
-                    running_vloss += vloss
-
-            avg_vloss = running_vloss / (i + 1)
-            print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
-
-            # Log the running loss averaged per batch
-            # for both training and validation
-            writer.add_scalars('Training vs. Validation Loss',
-                            { 'Training' : avg_loss, 'Validation' : avg_vloss },
-                            epoch_number + 1)
-            writer.flush()
-
-            # Track best performance, and save the model's state
-            if avg_vloss < best_vloss:
-                best_vloss = avg_vloss
-                model_path = 'ModelParameters/'+self.exportName+'/' +'model_{}_{}'.format(timestamp, epoch_number)
-                torch.save(self.modelD.state_dict(), model_path)
-
-            epoch_number += 1
-
-
-            #save the model after each epoch 
-            
-            torch.save(self.modelD, self.exportPath)
 
     
     
