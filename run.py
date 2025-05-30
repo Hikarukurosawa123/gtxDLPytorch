@@ -62,9 +62,5 @@ while True:
     loadFile = input('Enter the general and specific directory pertaining to the .keras (weights) file you would like to load: ')
     break 
 
-model = torch.load(loadFile, weights_only=False)
-
-#load the config file from the specified path 
-
-model.eval()
-
+predictor = Predictor(loadFile, testing_set)
+predictor.run()
