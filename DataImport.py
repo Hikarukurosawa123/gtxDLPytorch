@@ -428,11 +428,6 @@ class Operations():
         print("file uploaded to AWS")
 
     
-    
-
-    
-    
-
 
     
     def Fit(self,isTransfer):

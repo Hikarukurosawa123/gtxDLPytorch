@@ -94,8 +94,75 @@ class FocusOnDepth(nn.Module):
             self.head_depth = None
             self.head_segmentation = HeadSeg(resample_dim, nclasses=nclasses)
 
+
+        params = {}
+
+        params['learningRate'] = 5e-4 # Initial learning rate, subject to scheduled decay (see DL callbacks)
+        params['xX'] = 101 # Width of input maps
+        params['yY'] = 101 # Height of input maps
+        params['batch'] = 32
+        params['decayRate'] = 0.3
+        params['nFilters3D'] = 128 # Need to decrease filters due to OOM error (before - 128)
+        params['nFilters2D'] = 128
+        params['kernelConv3D'] = (3,3, 3) 
+        params['strideConv3D'] = (1,1,1)
+        params['kernelResBlock3D'] = (3,3,3)
+        params['kernelConv2D'] = (3,3)
+        params['strideConv2D'] = (1,1)
+        params['kernelResBlock2D'] = (3,3)
+
+
+        #define 3D CNN and 2D CNN for OP and FL 
+        nf2d = params['nFilters2D'] = 8
+        nf3d = params['nFilters3D'] = 8
+
+        # Optical Property (2D) branch
+        self.op_conv = nn.Sequential(
+            nn.Conv2d(2, nf2d, kernel_size=params['kernelConv2D'], stride=params['strideConv2D'], padding='same'),
+            self._get_activation(params['activation']),
+            nn.Conv2d(nf2d, nf2d, kernel_size=params['kernelConv2D'], stride=params['strideConv2D'], padding='same'),
+            self._get_activation(params['activation']),
+            nn.Conv2d(nf2d, nf2d, kernel_size=params['kernelConv2D'], stride=params['strideConv2D'], padding='same'),
+            self._get_activation(params['activation']),
+        )
+
+        # Fluorescence (3D) branch
+        self.fl_conv = nn.Sequential(
+            nn.Conv3d(1, nf3d, kernel_size=params['kernelConv3D'], stride=params['strideConv3D'], padding='same'),
+            self._get_activation(params['activation']),
+            nn.Conv3d(nf3d, nf3d, kernel_size=params['kernelConv3D'], stride=params['strideConv3D'], padding='same'),
+            self._get_activation(params['activation']),
+            nn.Conv3d(nf3d, nf3d, kernel_size=params['kernelConv3D'], stride=params['strideConv3D'], padding='same'),
+            self._get_activation(params['activation']),
+        )
+
+
+
+
     def forward(self, img):
         #get two inputs, OP and FL 
+
+        #initial 3D CNN and 2D CNN
+
+        OP = img[:, :2, :, :]         # (B, 2, H, W)
+        FL = img[:, 2:, :, :]         # (B, 6, H, W)
+
+        # Branches
+        op_out = self.op_conv(OP)     # (B, C_op, H, W)
+        FL = FL.unsqueeze(1)          # (B, 1, 6, H, W)
+        fl_out = self.fl_conv(FL)     # (B, C_fl, D, H, W)
+
+
+        # Reshape FL output to match OP output shape
+        B, C_fl, D, H, W = fl_out.shape
+        fl_out = fl_out.permute(0, 2, 1, 3, 4).reshape(B, D * C_fl, H, W)
+
+        # Concatenate both branches
+        concat = torch.cat([op_out, fl_out], dim=1)  # (B, C_concat, H, W)
+
+        img = concat 
+
+
         x = self.to_patch_embedding(img)
         b, n, _ = x.shape
         cls_tokens = repeat(self.cls_token, '() n d -> b n d', b = b)
