@@ -166,7 +166,10 @@ class Trainer(object):
             os.makedirs("ModelParameters_PT/"+path_model)
         exportPath = 'ModelParameters_PT/'+path_model + '.pt'
 
-        torch.save(self.model, exportPath)
+        torch.save({
+            'model_state_dict': self.model.state_dict(),
+            'config': self.config  # if you need to recreate the model later
+        }, exportPath)
         print('Model saved at : {}'.format(exportPath))
 
     def img_logger(self, X, Y_depths, Y_segmentations, output_depths, output_segmentations):

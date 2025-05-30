@@ -7,6 +7,9 @@ import torch
 import os 
 import matplotlib
 import matplotlib.pyplot as plt
+
+from FOD.FocusOnDepth import FocusOnDepth
+
 #with open('config.json', 'r') as f:
 #    config = json.load(f)
 
@@ -64,9 +67,31 @@ while True:
     loadFile = input('Enter the general and specific directory pertaining to the .keras (weights) file you would like to load: ')
     break 
 
-model = torch.load(loadFile, weights_only=False)
+checkpoint = torch.load(loadFile, map_location='cpu')  # or 'cuda' if available
+config = checkpoint['config']
 
-#load the config file from the specified path 
+#reconstruct the model 
+
+resize = config['Dataset']['transforms']['resize']
+
+num_channel_after_concat = 56  # or dynamically compute from input image if needed
+
+model = FocusOnDepth(
+    image_size  = (num_channel_after_concat, resize, resize),
+    emb_dim     = config['General']['emb_dim'],
+    resample_dim= config['General']['resample_dim'],
+    read        = config['General']['read'],
+    nclasses    = len(config['Dataset']['classes']) + 1,
+    hooks       = config['General']['hooks'],
+    model_timm  = config['General']['model_timm'],
+    type        = config['General']['type'],
+    patch_size  = config['General']['patch_size'],
+    config      = config
+)
+
+
+
+model.load_state_dict(checkpoint['model_state_dict'])
 
 def get_min(DF):
     DF_zeros = np.array(DF)
