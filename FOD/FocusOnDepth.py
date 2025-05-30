@@ -10,7 +10,13 @@ from FOD.Fusion import Fusion
 from FOD.Head import HeadDepth, HeadSeg
 
 torch.manual_seed(0)
+class ActivationHook:
+    def __init__(self, model_ref, name):
+        self.model_ref = model_ref
+        self.name = name
 
+    def __call__(self, module, input, output):
+        self.model_ref.activation[self.name] = output.detach()
 class FocusOnDepth(nn.Module):
     def __init__(self,
                  image_size         = (8, 100, 100),
@@ -114,16 +120,15 @@ class FocusOnDepth(nn.Module):
         return out_depth, out_depth2
 
     def _get_layers_from_hooks(self, hooks):
-        # Store hook handles to remove later (optional but good practice)
         self.hook_handles = []
-        
+
         for h in hooks:
-            layer_name = f"t{h}"
-
-            def make_hook(name):  # avoid closure capturing issue
-                def hook(model, input, output):
-                    self.activation[name] = output.detach()
-                return hook
-
-            handle = self.transformer_encoders.layers[h].register_forward_hook(make_hook(layer_name))
+            name = f't{h}'
+            hook = ActivationHook(self, name)
+            handle = self.transformer_encoders.layers[h].register_forward_hook(hook)
             self.hook_handles.append(handle)
+
+        def remove_hooks(self):
+            for handle in getattr(self, 'hook_handles', []):
+                handle.remove()
+            self.hook_handles = []
