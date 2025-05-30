@@ -1,6 +1,5 @@
 import json
 from glob import glob
-from FOD.Predictor import Predictor
 from main import DL
 import numpy as np 
 import torch
@@ -67,7 +66,9 @@ while True:
     loadFile = input('Enter the general and specific directory pertaining to the .keras (weights) file you would like to load: ')
     break 
 
-checkpoint = torch.load(loadFile, map_location='cpu')  # or 'cuda' if available
+
+
+checkpoint = torch.load(loadFile, map_location="cuda" if torch.cuda.is_available() else "cpu")  # or 'cuda' if available
 config = checkpoint['config']
 
 #reconstruct the model 
