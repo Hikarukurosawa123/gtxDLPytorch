@@ -162,9 +162,9 @@ class Trainer(object):
         path_model = os.path.join(self.config['General']['path_model'], self.model.__class__.__name__)
         
         #craete new directory if it doesn't exist
-        if not os.path.isdir("ModelParameters/"+path_model):
-            os.makedirs("ModelParameters/"+path_model)
-        exportPath = 'ModelParameters/'+path_model + '.pt'
+        if not os.path.isdir("ModelParameters_PT/"+path_model):
+            os.makedirs("ModelParameters_PT/"+path_model)
+        exportPath = 'ModelParameters_PT/'+path_model + '.pt'
 
         torch.save(self.model, exportPath)
         print('Model saved at : {}'.format(exportPath))
