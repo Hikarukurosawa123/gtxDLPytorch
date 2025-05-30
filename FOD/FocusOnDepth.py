@@ -49,6 +49,8 @@ class FocusOnDepth(nn.Module):
         #Splitting img into patches
         channels, image_height, image_width = image_size
 
+        print("channel size: ", channels)
+
         
         assert image_height % patch_size == 0 and image_width % patch_size == 0, 'Image dimensions must be divisible by the patch size.'
         num_patches = (image_height // patch_size) * (image_width // patch_size)
