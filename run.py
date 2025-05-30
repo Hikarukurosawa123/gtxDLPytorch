@@ -74,6 +74,12 @@ def get_min(DF):
     return DF_min_per_case
 
 def run(model, input_images):
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # Move model to correct device
+    model = model.to(device)
+
     with torch.no_grad():
         Images, QF, DF = input_images
 
