@@ -117,15 +117,15 @@ def run(model, input_images):
             Images = Images.unsqueeze(0)  # Add batch dimension
 
         # Index of valid background regions (DF != 10)
-        indxIncl = np.where(DF != 10)
+        indxIncl = np.where(DF.cpu().numpy() != 10)  # still use CPU values for indexing
 
         model.eval()
         predict = model(Images)
 
-        DF = DF.detach().numpy()
-        QF = QF.detach().numpy()
-        QF_P = predict[0].detach().numpy()
-        DF_P = predict[1].detach().numpy()
+        DF = DF.cpu().numpy()
+        QF = QF.cpu().numpy()
+        QF_P = predict[0].detach().cpu().numpy()
+        DF_P = predict[1].detach().cpu().numpy()
 
         DF_P = np.reshape(DF_P, (DF_P.shape[0], DF_P.shape[2], DF_P.shape[3]))
         QF_P = np.reshape(QF_P, (QF_P.shape[0], QF_P.shape[2], QF_P.shape[3]))
