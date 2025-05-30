@@ -136,7 +136,15 @@ class FocusOnDepth(nn.Module):
             self._get_activation(params['activation']),
         )
 
-
+    def _get_activation(self, name):
+        if name == 'relu':
+            return nn.ReLU()
+        elif name == 'leaky_relu':
+            return nn.LeakyReLU()
+        elif name == 'elu':
+            return nn.ELU()
+        else:
+            raise ValueError(f"Unsupported activation: {name}")
 
 
     def forward(self, img):
