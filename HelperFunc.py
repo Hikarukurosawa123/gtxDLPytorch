@@ -112,7 +112,7 @@ class Helper():
 
                 
         bucket = self.bucket
-        folder = "ModelParameters"
+        folder = "ModelParameters_PT"
         s3 = boto3.resource("s3")
         s3_bucket = s3.Bucket(bucket)
         files_in_s3 = [f.key.split(folder + "/")[1] for f in s3_bucket.objects.filter(Prefix=folder).all()]
@@ -121,7 +121,7 @@ class Helper():
         #filter files 
         for file in files_in_s3:
             if file.endswith((".pt")):
-                filename = "ModelParameters/"+ file 
+                filename = "ModelParameters_PT/"+ file 
                 
                 h5_files.append(filename)
                 print(filename)  
