@@ -15,7 +15,7 @@
         "momentum":0.9,
         "epochs":150,
         "batch_size":32,
-        "path_model":"20250530_ViTDensePredictionWithCNNatBeg_channel_8",
+        "path_model":"20250531_ViTDensePredictionWithCNNatBeg_channel_32_with_dropout",
         "path_predicted_images":"output",
         "seed":0,
         "patch_size":8,
