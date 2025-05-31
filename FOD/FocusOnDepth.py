@@ -27,7 +27,7 @@ class FocusOnDepth(nn.Module):
                  num_layers_encoder = 24,
                  hooks              = [5, 11, 17, 23],
                  reassemble_s       = [4, 8, 16, 32],
-                 transformer_dropout= 0.0,
+                 transformer_dropout= 0.5,
                  nclasses           = 2,
                  type               = "full",
                  model_timm         = "vit_large_patch16_384",
@@ -115,8 +115,8 @@ class FocusOnDepth(nn.Module):
         params['activation'] = 'relu'
 
         #define 3D CNN and 2D CNN for OP and FL 
-        nf2d = params['nFilters2D'] = 64
-        nf3d = params['nFilters3D'] = 64
+        nf2d = params['nFilters2D'] = 32
+        nf3d = params['nFilters3D'] = 32
 
         # Optical Property (2D) branch
         self.op_conv = nn.Sequential(

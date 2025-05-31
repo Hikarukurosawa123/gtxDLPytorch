@@ -15,11 +15,11 @@
         "momentum":0.9,
         "epochs":150,
         "batch_size":32,
-        "path_model":"20250531_ViTDensePredictionWithCNNatBeg_channel_64_with_patch_size_8",
+        "path_model":"20250531_ViTDensePredictionWithCNNatBeg_channel_32_with_patch_size_8_withdropout",
         "path_predicted_images":"output",
         "seed":0,
         "patch_size":8,
-        "num_channel_after_concat": 448
+        "num_channel_after_concat": 224
 
     },
     "Dataset":{
