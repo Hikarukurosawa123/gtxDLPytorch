@@ -27,7 +27,7 @@ class FocusOnDepth(nn.Module):
                  num_layers_encoder = 24,
                  hooks              = [5, 11, 17, 23],
                  reassemble_s       = [4, 8, 16, 32],
-                 transformer_dropout= 0.5,
+                 transformer_dropout= 0.0,
                  nclasses           = 2,
                  type               = "full",
                  model_timm         = "vit_large_patch16_384",
@@ -154,23 +154,23 @@ class FocusOnDepth(nn.Module):
 
         #initial 3D CNN and 2D CNN
 
-        OP = img[:, :2, :, :]         # (B, 2, H, W)
-        FL = img[:, 2:, :, :]         # (B, 6, H, W)
+        # OP = img[:, :2, :, :]         # (B, 2, H, W)
+        # FL = img[:, 2:, :, :]         # (B, 6, H, W)
 
-        # Branches
-        op_out = self.op_conv(OP)     # (B, C_op, H, W)
-        FL = FL.unsqueeze(1)          # (B, 1, 6, H, W)
-        fl_out = self.fl_conv(FL)     # (B, C_fl, D, H, W)
+        # # Branches
+        # op_out = self.op_conv(OP)     # (B, C_op, H, W)
+        # FL = FL.unsqueeze(1)          # (B, 1, 6, H, W)
+        # fl_out = self.fl_conv(FL)     # (B, C_fl, D, H, W)
 
 
-        # Reshape FL output to match OP output shape
-        B, C_fl, D, H, W = fl_out.shape
-        fl_out = fl_out.permute(0, 2, 1, 3, 4).reshape(B, D * C_fl, H, W)
+        # # Reshape FL output to match OP output shape
+        # B, C_fl, D, H, W = fl_out.shape
+        # fl_out = fl_out.permute(0, 2, 1, 3, 4).reshape(B, D * C_fl, H, W)
 
-        # Concatenate both branches
-        concat = torch.cat([op_out, fl_out], dim=1)  # (B, C_concat, H, W)
+        # # Concatenate both branches
+        # concat = torch.cat([op_out, fl_out], dim=1)  # (B, C_concat, H, W)
 
-        img = concat 
+        # img = concat 
 
 
         x = self.to_patch_embedding(img)
