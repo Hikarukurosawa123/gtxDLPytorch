@@ -27,7 +27,7 @@ class FocusOnDepth(nn.Module):
                  num_layers_encoder = 24,
                  hooks              = [5, 11, 17, 23],
                  reassemble_s       = [4, 8, 16, 32],
-                 transformer_dropout= 0.5,
+                 transformer_dropout= 0.0,
                  nclasses           = 2,
                  type               = "full",
                  model_timm         = "vit_large_patch16_384",
@@ -66,7 +66,7 @@ class FocusOnDepth(nn.Module):
         self.pos_embedding = nn.Parameter(torch.randn(1, num_patches + 1, emb_dim))
 
         #Transformer
-        encoder_layer = nn.TransformerEncoderLayer(d_model=emb_dim, nhead=12, dropout=transformer_dropout, dim_feedforward=emb_dim*4, norm_first = True)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=emb_dim, nhead=12, dropout=transformer_dropout, dim_feedforward=emb_dim*4, norm_first = False)
         self.transformer_encoders = nn.TransformerEncoder(encoder_layer, num_layers=num_layers_encoder)
         #self.transformer_encoders = timm.create_model(model_timm, pretrained=True)
         self.type_ = type
