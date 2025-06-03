@@ -78,7 +78,7 @@ resize = config['Dataset']['transforms']['resize']
 num_channel_after_concat = 56  # or dynamically compute from input image if needed
 
 model = FocusOnDepth(
-    image_size  = (config['General']['num_channel_after_concat'], resize, resize),
+    image_size  = (8, resize, resize),
     emb_dim     = config['General']['emb_dim'],
     resample_dim= config['General']['resample_dim'],
     read        = config['General']['read'],
