@@ -195,7 +195,7 @@ class Operations():
   
         apply_normalization = 0
 
-        apply_mean_normalization = 1
+        apply_mean_normalization = 0
 
         self.FL = self.dataset['F']
        
