@@ -18,6 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from torch.utils.data import Dataset, DataLoader
 
+from pathlib import Path
 
 class MyDataset(Dataset):
     def __init__(self, images1,labels1, labels2):
@@ -181,6 +182,12 @@ class Operations():
         #import data either in AWS cloud or in local desktop 
         
         obj = s3_client.get_object(Bucket=self.bucket, Key=self.file_key)
+
+        #extract the parent folder name of the .mat file 
+        if isTesting: 
+            print("file key: ", self.file_key)
+            self.folder_name = str(Path(self.file_key).relative_to("TestingData").parent.as_posix().replace("/", "_"))
+
 
         dataTemp = obj['Body'].read()
     

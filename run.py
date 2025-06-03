@@ -6,7 +6,7 @@ import torch
 import os 
 import matplotlib
 import matplotlib.pyplot as plt
-
+from pathlib import Path
 from FOD.FocusOnDepth import FocusOnDepth
 
 #with open('config.json', 'r') as f:
@@ -90,7 +90,7 @@ model = FocusOnDepth(
     config      = config
 )
 
-
+plot_save_path =  os.path.join('./predictions/' + data_import_op.folder_name)
 
 model.load_state_dict(checkpoint['model_state_dict'])
 
@@ -184,35 +184,52 @@ def run(model, input_images):
 
         min_depth_graph.show()
 
-        for i in range(DF.shape[0]):
+        for i in range(np.shape(DF)[0]):
+            print("DF, DF pred: ", DF_min[i], DFP_min[i])
             fig, axs = plt.subplots(2, 3)
             plt.set_cmap('jet')
 
-            plt.colorbar(axs[0, 0].imshow(DF[i, :, :], vmin=0, vmax=15), ax=axs[0, 0], fraction=0.046, pad=0.04)
+            # True Depth
+            plt.colorbar(axs[0, 0].imshow(DF[i, :, :], vmin=0, vmax=15),
+                        ax=axs[0, 0], fraction=0.046, pad=0.04, ticks=[0, 5, 10, 15])
             axs[0, 0].axis('off')
             axs[0, 0].set_title('True Depth (mm)')
 
-            plt.colorbar(axs[0, 1].imshow(DF_P[i, :, :], vmin=0, vmax=15), ax=axs[0, 1], fraction=0.046, pad=0.04)
+            # Predicted Depth
+            plt.colorbar(axs[0, 1].imshow(DF_P[i, :, :], vmin=0, vmax=15),
+                        ax=axs[0, 1], fraction=0.046, pad=0.04, ticks=[0, 5, 10, 15])
             axs[0, 1].axis('off')
             axs[0, 1].set_title('Predicted Depth (mm)')
 
-            plt.colorbar(axs[0, 2].imshow(abs(DF_error[i, :, :]), vmin=0, vmax=15), ax=axs[0, 2], fraction=0.046, pad=0.04)
+            # Depth Error
+            plt.colorbar(axs[0, 2].imshow(abs(DF_error[i, :, :]), vmin=0, vmax=10),
+                        ax=axs[0, 2], fraction=0.046, pad=0.04)
             axs[0, 2].axis('off')
             axs[0, 2].set_title('|Error (mm)|')
 
-            plt.colorbar(axs[1, 0].imshow(QF[i, :, :], vmin=0, vmax=10), ax=axs[1, 0], fraction=0.046, pad=0.04)
+            # True Concentration
+            plt.colorbar(axs[1, 0].imshow(QF[i, :, :], vmin=0, vmax=10),
+                        ax=axs[1, 0], fraction=0.046, pad=0.04)
             axs[1, 0].axis('off')
             axs[1, 0].set_title('True Conc (ug/mL)')
 
-            plt.colorbar(axs[1, 1].imshow(QF_P[i, :, :], vmin=0, vmax=10), ax=axs[1, 1], fraction=0.046, pad=0.04)
+            # Predicted Concentration
+            plt.colorbar(axs[1, 1].imshow(QF_P[i, :, :], vmin=0, vmax=10),
+                        ax=axs[1, 1], fraction=0.046, pad=0.04)
             axs[1, 1].axis('off')
             axs[1, 1].set_title('Predicted Conc (ug/mL)')
 
-            plt.colorbar(axs[1, 2].imshow(abs(QF_error[i, :, :]), vmin=0, vmax=10), ax=axs[1, 2], fraction=0.046, pad=0.04)
+            # Concentration Error
+            plt.colorbar(axs[1, 2].imshow(abs(QF_error[i, :, :]), vmin=0, vmax=10),
+                        ax=axs[1, 2], fraction=0.046, pad=0.04)
             axs[1, 2].axis('off')
             axs[1, 2].set_title('|Error (ug/mL)|')
 
+            # Save the figure
             plt.tight_layout()
-            plt.show()
+            base_filename = plot_save_path + f'_sample_{i}_'
+            plt.savefig(base_filename + 'figure.png', dpi=300)  # Save as PNG
+            plt.close(fig)  # Close to avoid memory issues
+
 
 run(model, testing_set)
