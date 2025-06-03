@@ -102,7 +102,7 @@ class Reassemble(nn.Module):
 
         #Concat after read
         
-        self.concat = Rearrange('b (c h w) d -> b d c h w',
+        self.concat = Rearrange('b (c h w) d -> b (d c) h w',
                                 c=channels,
                                 d = emb_dim,
                                 h=(image_height // p),
