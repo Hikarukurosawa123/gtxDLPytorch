@@ -91,6 +91,8 @@ model = FocusOnDepth(
 )
 
 plot_save_path =  os.path.join('./predictions/' + data_import_op.folder_name)
+save = 1
+
 
 model.load_state_dict(checkpoint['model_state_dict'])
 
@@ -227,9 +229,11 @@ def run(model, input_images):
 
             # Save the figure
             plt.tight_layout()
-            base_filename = plot_save_path + f'_sample_{i}_'
-            plt.savefig(base_filename + 'figure.png', dpi=300)  # Save as PNG
-            plt.close(fig)  # Close to avoid memory issues
+
+            if save:
+                base_filename = plot_save_path + f'_sample_{i}_'
+                plt.savefig(base_filename + 'figure.png', dpi=300)  # Save as PNG
+                plt.close(fig)  # Close to avoid memory issues
 
 
 run(model, testing_set)
