@@ -111,7 +111,7 @@ class Reassemble(nn.Module):
 
 
         #Projection + Resample
-        self.resample = Resample(p, s, image_height, emb_dim, resample_dim)
+        self.resample = Resample(p, s, image_height, emb_dim * channels, resample_dim)
 
     def forward(self, x):
         x = self.read(x)
