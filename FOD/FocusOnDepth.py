@@ -179,6 +179,9 @@ class FocusOnDepth(nn.Module):
         high = 4
         random_scalar = torch.rand(1, 1) * (high - low) + low
 
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        random_scalar = random_scalar.to(device)
         img[:, 2:, :, :] *= random_scalar
         x = self.to_patch_embedding(img)
 
