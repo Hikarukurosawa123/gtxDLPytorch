@@ -177,7 +177,7 @@ class FocusOnDepth(nn.Module):
         # img = concat 
         low = 0.25
         high = 4
-        random_scalar = torch.rand(3, 3) * (high - low) + low
+        random_scalar = torch.rand(1, 1) * (high - low) + low
 
         img[:, 2:, :, :] *= random_scalar
         x = self.to_patch_embedding(img)
