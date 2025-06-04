@@ -175,8 +175,11 @@ class FocusOnDepth(nn.Module):
         # concat = torch.cat([op_out, fl_out], dim=1)  # (B, C_concat, H, W)
 
         # img = concat 
+        low = 0.25
+        high = 4
+        random_scalar = torch.rand(3, 3) * (high - low) + low
 
-
+        img[:, 2:, :, :] *= random_scalar
         x = self.to_patch_embedding(img)
 
         #x = rearrange(x, 'b c n d -> b n (c d)') #added for channel wise embedding
