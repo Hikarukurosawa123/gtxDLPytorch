@@ -28,7 +28,7 @@ class FocusOnDepth(nn.Module):
                  num_layers_encoder = 24,
                  hooks              = [5, 11, 17, 23],
                  reassemble_s       = [4, 8, 16, 32],
-                 transformer_dropout= 0.0,
+                 transformer_dropout= 0.5,
                  nclasses           = 2,
                  type               = "full",
                  model_timm         = "vit_large_patch16_384",
