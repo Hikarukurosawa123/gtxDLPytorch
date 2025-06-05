@@ -57,10 +57,10 @@ class FocusOnDepth(nn.Module):
         #num_patches = (image_height // patch_size) * (image_width // patch_size)
         num_patches = (image_height // patch_size) * (image_width // patch_size) * channels
 
-        patch_dim = patch_size * patch_size #channels * patch_size * patch_size 
+        patch_dim = channels * patch_size * patch_size #patch_size * patch_size 
         self.to_patch_embedding = nn.Sequential(
-            #Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=patch_size, p2=patch_size),
-            Rearrange('b c (h p1) (w p2) -> b (c h w) (p1 p2)', p1=patch_size, p2=patch_size),
+            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=patch_size, p2=patch_size),
+            #Rearrange('b c (h p1) (w p2) -> b (c h w) (p1 p2)', p1=patch_size, p2=patch_size),
             
             nn.Linear(patch_dim, emb_dim)
         )
@@ -70,7 +70,7 @@ class FocusOnDepth(nn.Module):
 
         #Transformer
         #oriignal - nhead = 12, nhead = 8 for 3D embedding
-        encoder_layer = nn.TransformerEncoderLayer(d_model=emb_dim, nhead=8, dropout=transformer_dropout, dim_feedforward=emb_dim*4, norm_first = False)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=emb_dim, nhead=12, dropout=transformer_dropout, dim_feedforward=emb_dim*4, norm_first = False)
         self.transformer_encoders = nn.TransformerEncoder(encoder_layer, num_layers=num_layers_encoder)
         #self.transformer_encoders = timm.create_model(model_timm, pretrained=True)
         self.type_ = type
