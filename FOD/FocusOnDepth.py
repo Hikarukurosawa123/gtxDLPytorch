@@ -175,14 +175,14 @@ class FocusOnDepth(nn.Module):
         # concat = torch.cat([op_out, fl_out], dim=1)  # (B, C_concat, H, W)
 
         # img = concat 
-        low = 0.25
-        high = 4
-        random_scalar = torch.rand(1, 1) * (high - low) + low
+        # low = 0.25
+        # high = 4
+        # random_scalar = torch.rand(1, 1) * (high - low) + low
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        random_scalar = random_scalar.to(device)
-        img[:, 2:, :, :] *= random_scalar
+        # random_scalar = random_scalar.to(device)
+        # img[:, 2:, :, :] *= random_scalar
         x = self.to_patch_embedding(img)
 
         #x = rearrange(x, 'b c n d -> b n (c d)') #added for channel wise embedding
