@@ -15,7 +15,7 @@
         "momentum":0.9,
         "epochs":150,
         "batch_size":32,
-        "path_model":"20250605_ViTDensePredictionWithoutCNN_withdropout_0_5_2D_embedding_emd_dim_768_head_12_3D_noise",
+        "path_model":"20250606_ViTDensePredictionWithoutCNN_withdropout_0_5_2D_embedding_emd_dim_768_head_12_debug_normal",
         "path_predicted_images":"output",
         "seed":0,
         "patch_size":8,
