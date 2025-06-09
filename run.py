@@ -102,7 +102,7 @@ def get_min(DF):
     return DF_min_per_case
 
 
-def min_depth_graph(pred_DF):
+def min_depth_plot(pred_DF):
         
         # Prepare true depths
         num_depth = 9
@@ -185,7 +185,7 @@ def run(model, input_images):
 
 
         #plot min depth graph for liquid phantoms 
-        min_depth_graph(DFP_min)
+        min_depth_plot(DFP_min)
 
         # Compute absolute minimum depth error
         min_depth_error = np.mean(np.abs(DFP_min - DF_min))
