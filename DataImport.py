@@ -326,11 +326,11 @@ class Operations():
                 self.FL = np.array(self.FL)
                 self.FL = (self.FL - FL_min) / (FL_max - FL_min + 1e-8)  # add epsilon to avoid division by zero
 
-                # Apply min-max normalization on OP
-                OP_min = np.min(self.OP, axis=(1, 2, 3), keepdims=True)
-                OP_max = np.max(self.OP, axis=(1, 2, 3), keepdims=True)
-                self.OP = np.array(self.OP)
-                self.OP = (self.OP - OP_min) / (OP_max - OP_min + 1e-8)
+                # Apply min-max normalization on OP - no normalization on OP
+                # OP_min = np.min(self.OP, axis=(1, 2, 3), keepdims=True)
+                # OP_max = np.max(self.OP, axis=(1, 2, 3), keepdims=True)
+                # self.OP = np.array(self.OP)
+                # self.OP = (self.OP - OP_min) / (OP_max - OP_min + 1e-8)
 
 
 

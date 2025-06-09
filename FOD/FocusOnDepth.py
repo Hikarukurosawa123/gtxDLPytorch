@@ -28,7 +28,7 @@ class FocusOnDepth(nn.Module):
                  num_layers_encoder = 24,
                  hooks              = [5, 11, 17, 23],
                  reassemble_s       = [4, 8, 16, 32],
-                 transformer_dropout= 0.5,
+                 transformer_dropout= 0.50,
                  nclasses           = 2,
                  type               = "full",
                  model_timm         = "vit_large_patch16_384",
@@ -57,10 +57,10 @@ class FocusOnDepth(nn.Module):
         #num_patches = (image_height // patch_size) * (image_width // patch_size)
         num_patches = (image_height // patch_size) * (image_width // patch_size) * channels
 
-        patch_dim = patch_size * patch_size #channels * patch_size * patch_size 
+        patch_dim = channels * patch_size * patch_size #patch_size * patch_size 
         self.to_patch_embedding = nn.Sequential(
-            #Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=patch_size, p2=patch_size),
-            Rearrange('b c (h p1) (w p2) -> b (c h w) (p1 p2)', p1=patch_size, p2=patch_size),
+            Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=patch_size, p2=patch_size),
+            #Rearrange('b c (h p1) (w p2) -> b (c h w) (p1 p2)', p1=patch_size, p2=patch_size),
             
             nn.Linear(patch_dim, emb_dim)
         )
@@ -70,7 +70,7 @@ class FocusOnDepth(nn.Module):
 
         #Transformer
         #oriignal - nhead = 12, nhead = 8 for 3D embedding
-        encoder_layer = nn.TransformerEncoderLayer(d_model=emb_dim, nhead=8, dropout=transformer_dropout, dim_feedforward=emb_dim*4, norm_first = False)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=emb_dim, nhead=12, dropout=transformer_dropout, dim_feedforward=emb_dim*4, norm_first = False)
         self.transformer_encoders = nn.TransformerEncoder(encoder_layer, num_layers=num_layers_encoder)
         #self.transformer_encoders = timm.create_model(model_timm, pretrained=True)
         self.type_ = type
@@ -175,14 +175,14 @@ class FocusOnDepth(nn.Module):
         # concat = torch.cat([op_out, fl_out], dim=1)  # (B, C_concat, H, W)
 
         # img = concat 
-        low = 0.25
-        high = 4
-        random_scalar = torch.rand(1, 1) * (high - low) + low
+        # low = 0.25
+        # high = 4
+        # random_scalar = torch.rand(1, 1) * (high - low) + low
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        random_scalar = random_scalar.to(device)
-        img[:, 2:, :, :] *= random_scalar
+        # random_scalar = random_scalar.to(device)
+        # img[:, 2:, :, :] *= random_scalar
         x = self.to_patch_embedding(img)
 
         #x = rearrange(x, 'b c n d -> b n (c d)') #added for channel wise embedding
