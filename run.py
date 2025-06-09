@@ -101,6 +101,34 @@ def get_min(DF):
     DF_min_per_case = np.nanmin(DF_zeros, axis=(1, 2))
     return DF_min_per_case
 
+
+def min_depth_graph(pred_DF):
+        
+        # Prepare true depths
+        num_depth = 9
+        depths = [2, 4, 6, 8]
+        num_cases = num_depth
+        true_DF = [d for i in range(num_cases) for d in depths]
+
+        # Compute absolute error
+        errors = np.abs(true_DF - pred_DF)
+        
+        # Compute mean and std for each case
+        mean_errors = np.mean(errors, axis=1)
+        std_errors = np.std(errors, axis=1)
+        
+        # Plot mean errors with error bars
+        plt.figure(figsize=(10, 6))
+        plt.bar(range(1, num_cases + 1), mean_errors, yerr=std_errors, capsize=5, 
+                color='steelblue', edgecolor='black', error_kw={'elinewidth':1.5})
+        plt.xticks(range(1, num_cases + 1))
+        plt.xlabel("Case Number")
+        plt.ylabel("Mean Absolute Error (mm)")
+        plt.title("Mean Prediction Error for Each Case", fontsize=16, fontweight='bold')
+        plt.grid(axis='y', linestyle='--', alpha=0.6)
+        plt.tight_layout()
+        plt.show()
+
 def run(model, input_images):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -154,6 +182,10 @@ def run(model, input_images):
 
         print("Ground truth:", DF_min)
         print("Prediction: ", DFP_min)
+
+
+        #plot min depth graph for liquid phantoms 
+        min_depth_graph(DFP_min)
 
         # Compute absolute minimum depth error
         min_depth_error = np.mean(np.abs(DFP_min - DF_min))
