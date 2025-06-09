@@ -103,31 +103,27 @@ def get_min(DF):
 
 
 def min_depth_plot(pred_DF):
-        
-        # Prepare true depths
-        num_depth = 9
-        depths = [2, 4, 6, 8]
-        num_cases = num_depth
-        true_DF = [d for i in range(num_cases) for d in depths]
+    # Prepare true depths
+    depths = [2, 4, 6, 8]
+    num_cases = 9
+    true_DF = [d for i in range(num_cases) for d in depths]
 
-        # Compute absolute error
-        errors = np.abs(true_DF - pred_DF)
-        
-        # Compute mean and std for each case
-        mean_errors = np.mean(errors, axis=1)
-        std_errors = np.std(errors, axis=1)
-        
-        # Plot mean errors with error bars
-        plt.figure(figsize=(10, 6))
-        plt.bar(range(1, num_cases + 1), mean_errors, yerr=std_errors, capsize=5, 
-                color='steelblue', edgecolor='black', error_kw={'elinewidth':1.5})
-        plt.xticks(range(1, num_cases + 1))
-        plt.xlabel("Case Number")
-        plt.ylabel("Mean Absolute Error (mm)")
-        plt.title("Mean Prediction Error for Each Case", fontsize=16, fontweight='bold')
-        plt.grid(axis='y', linestyle='--', alpha=0.6)
-        plt.tight_layout()
-        plt.show()
+    # Ensure pred_DF is a NumPy array
+    pred_DF = np.array(pred_DF)
+    true_DF = np.array(true_DF)
+
+    # Plot scatter plot
+    plt.figure(figsize=(8, 6))
+    plt.scatter(true_DF, pred_DF, c='steelblue', edgecolors='black', alpha=0.7)
+    plt.plot([min(true_DF), max(true_DF)], [min(true_DF), max(true_DF)], 'r--', label='Ideal Prediction')
+    plt.xlabel("True Depth (mm)")
+    plt.ylabel("Predicted Depth (mm)")
+    plt.title("Scatter Plot of True vs. Predicted Depths", fontsize=16, fontweight='bold')
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.show()
+
 
 def run(model, input_images):
 
